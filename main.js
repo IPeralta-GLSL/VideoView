@@ -22,6 +22,7 @@ const canvasWave2 = document.getElementById('canvas-waveform-2');
 let isPlaying = false;
 let duration = 0;
 let dragCounter = 0;
+let isDraggingTimeline = false;
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 slider.addEventListener('input', (e) => {
@@ -42,10 +43,12 @@ const formatTime = (timeInSeconds) => {
 
 const updateTimeline = () => {
   if (videoBase.readyState > 0) {
-    const current = videoBase.currentTime;
+    const current = isDraggingTimeline ? parseFloat(timelineSlider.value) : videoBase.currentTime;
     const pct = (current / duration) * 100;
     playhead.style.left = `${pct}%`;
-    timelineSlider.value = current;
+    if (!isDraggingTimeline) {
+      timelineSlider.value = current;
+    }
     currentTimeDisplay.textContent = formatTime(current);
   }
 };
@@ -58,9 +61,11 @@ videoBase.addEventListener('loadedmetadata', () => {
 });
 
 videoBase.addEventListener('timeupdate', () => {
-  updateTimeline();
-  if (Math.abs(videoBase.currentTime - videoOverlay.currentTime) > 0.1) {
-    videoOverlay.currentTime = videoBase.currentTime;
+  if (!isDraggingTimeline) {
+    updateTimeline();
+    if (Math.abs(videoBase.currentTime - videoOverlay.currentTime) > 0.1) {
+      videoOverlay.currentTime = videoBase.currentTime;
+    }
   }
 });
 
@@ -70,10 +75,24 @@ videoBase.addEventListener('ended', () => {
   iconPause.style.display = 'none';
 });
 
-timelineSlider.addEventListener('input', (e) => {
-  const t = parseFloat(e.target.value);
+timelineSlider.addEventListener('mousedown', () => isDraggingTimeline = true);
+timelineSlider.addEventListener('touchstart', () => isDraggingTimeline = true);
+
+timelineSlider.addEventListener('mouseup', () => {
+  isDraggingTimeline = false;
+  const t = parseFloat(timelineSlider.value);
   videoBase.currentTime = t;
   videoOverlay.currentTime = t;
+});
+
+timelineSlider.addEventListener('touchend', () => {
+  isDraggingTimeline = false;
+  const t = parseFloat(timelineSlider.value);
+  videoBase.currentTime = t;
+  videoOverlay.currentTime = t;
+});
+
+timelineSlider.addEventListener('input', () => {
   updateTimeline();
 });
 
