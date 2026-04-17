@@ -1,0 +1,296 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  background-color: #141414;
+  color: #c8c8c8;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 8px;
+  gap: 8px;
+}
+
+.app-header {
+  background-color: #222222;
+  padding: 8px 16px;
+  border-bottom: 1px solid #000;
+  display: flex;
+  align-items: center;
+}
+
+.app-header h1 {
+  font-size: 12px;
+  font-weight: 600;
+  color: #999;
+  letter-spacing: 1px;
+}
+
+.main-workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #1a1a1a;
+  border: 1px solid #111;
+  position: relative;
+}
+
+.viewer-container {
+  flex: 1;
+  position: relative;
+  background-color: #000;
+  overflow: hidden;
+}
+
+.video-element {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.video-overlay-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  clip-path: polygon(0% 0%, 50% 0%, 50% 100%, 0% 100%);
+}
+
+.comparison-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: ew-resize;
+  z-index: 10;
+}
+
+.slider-handle {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  bottom: 0;
+  width: 2px;
+  background-color: #d4d4d4;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.slider-handle-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 32px;
+  background-color: #282828;
+  border: 1px solid #555;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.slider-line-icon {
+  width: 2px;
+  height: 16px;
+  background-color: #888;
+}
+
+.drop-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 20;
+  display: flex;
+  background-color: rgba(0, 0, 0, 0.7);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s;
+}
+
+.drop-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.drop-side {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 2px dashed #444;
+  margin: 16px;
+  color: #777;
+  font-size: 18px;
+  font-weight: 500;
+  transition: all 0.1s;
+}
+
+.drop-side.drag-over {
+  background-color: rgba(242, 108, 54, 0.1);
+  border-color: #f26c36;
+  color: #f26c36;
+}
+
+.drop-side span {
+  pointer-events: none;
+}
+
+.transport-controls {
+  height: 40px;
+  background-color: #222222;
+  border-top: 1px solid #111;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+}
+
+.controls-group {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-transport {
+  background-color: #282828;
+  border: 1px solid #1a1a1a;
+  color: #ccc;
+  width: 32px;
+  height: 28px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+.btn-transport:hover {
+  background-color: #383838;
+  color: #fff;
+}
+
+.btn-transport:active {
+  background-color: #f26c36;
+  color: #111;
+}
+
+.timecode {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 14px;
+  color: #8bf236;
+}
+
+.timeline-container {
+  height: 120px;
+  background-color: #1c1c1c;
+  border-top: 1px solid #111;
+  position: relative;
+}
+
+.tracks-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.track {
+  flex: 1;
+  border-bottom: 1px solid #111;
+  position: relative;
+  background-color: #262626;
+}
+
+.waveform-canvas {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.timeline-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: text;
+  z-index: 10;
+}
+
+.playhead {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 100%;
+  background-color: #8bf236;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.playhead::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -5px;
+  width: 11px;
+  height: 12px;
+  background-color: #8bf236;
+  clip-path: polygon(0 0, 100% 0, 100% 60%, 50% 100%, 0 60%);
+}
+
+.mixer-panel {
+  height: 60px;
+  background-color: #1c1c1c;
+  border-top: 1px solid #111;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+}
+
+.tracks-container {
+  display: flex;
+  gap: 24px;
+}
+
+.audio-track {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 120px;
+}
+
+.audio-track label {
+  font-size: 10px;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.audio-track input[type="range"] {
+  width: 100%;
+  accent-color: #8bf236;
+}

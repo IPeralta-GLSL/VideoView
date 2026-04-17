@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Comparador DaVinci Style</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <h1>Video Viewer</h1>
+    </header>
+    <main class="main-workspace">
+      <div id="viewer-container" class="viewer-container">
+        <div id="drop-overlay" class="drop-overlay">
+          <div id="drop-left" class="drop-side"><span>Soltar Video 1</span></div>
+          <div id="drop-right" class="drop-side"><span>Soltar Video 2</span></div>
+        </div>
+        <video id="video-base" class="video-element" playsinline preload="auto" crossorigin="anonymous">
+          <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+            type="video/mp4">
+        </video>
+        <div id="video-overlay-container" class="video-overlay-container">
+          <video id="video-overlay" class="video-element" playsinline preload="auto" crossorigin="anonymous">
+            <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4"
+              type="video/mp4">
+          </video>
+        </div>
+        <div id="slider-handle" class="slider-handle">
+          <div class="slider-handle-button">
+            <div class="slider-line-icon"></div>
+          </div>
+        </div>
+        <input type="range" id="comparison-slider" class="comparison-slider" min="0" max="100" value="50">
+      </div>
+      <div class="transport-controls">
+        <div class="timecode">
+          <span id="current-time">00:00:00:00</span>
+        </div>
+        <div class="controls-group">
+          <button id="btn-start" class="btn-transport">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+            </svg>
+          </button>
+          <button id="btn-play-pause" class="btn-transport">
+            <svg id="icon-play" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+            <svg id="icon-pause" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+              <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+            </svg>
+          </button>
+        </div>
+        <div class="timecode right">
+          <span id="duration-time">00:00:00:00</span>
+        </div>
+      </div>
+      <div class="timeline-container">
+        <div class="tracks-wrapper">
+          <div class="track">
+            <canvas class="waveform-canvas" id="canvas-waveform-1"></canvas>
+          </div>
+          <div class="track">
+            <canvas class="waveform-canvas" id="canvas-waveform-2"></canvas>
+          </div>
+        </div>
+        <input type="range" id="timeline-slider" class="timeline-slider" min="0" max="100" value="0" step="0.01">
+        <div class="playhead" id="playhead"></div>
+      </div>
+      <div class="mixer-panel">
+        <div class="tracks-container">
+          <div class="audio-track">
+            <label>Volumen Pista 1</label>
+            <input type="range" id="vol-track1" min="0" max="1" step="0.01" value="1">
+          </div>
+          <div class="audio-track">
+            <label>Volumen Pista 2</label>
+            <input type="range" id="vol-track2" min="0" max="1" step="0.01" value="1">
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+
+</html>
