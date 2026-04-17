@@ -29,6 +29,7 @@ body {
   border-bottom: 1px solid #000;
   display: flex;
   align-items: center;
+  justify-content: space-between;
 }
 
 .app-header h1 {
@@ -36,6 +37,32 @@ body {
   font-weight: 600;
   color: #999;
   letter-spacing: 1px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-header {
+  background-color: #282828;
+  border: 1px solid #1a1a1a;
+  color: #ccc;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.btn-header:hover {
+  background-color: #383838;
+  color: #fff;
+}
+
+.btn-header.primary {
+  background-color: #8bf236;
+  color: #111;
+  font-weight: bold;
 }
 
 .main-workspace {
@@ -300,4 +327,88 @@ body {
   accent-color: #8bf236;
   cursor: pointer;
   margin: 0;
+}
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0,0,0,0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-content {
+  background-color: #222;
+  border: 1px solid #444;
+  padding: 24px;
+  width: 400px;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.modal-content h2 {
+  font-size: 16px;
+  margin-bottom: 16px;
+  color: #eee;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 12px;
+  background-color: #111;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background-color: #8bf236;
+  transition: width 0.1s linear;
+}
+
+#render-status {
+  font-size: 12px;
+  color: #aaa;
+}
+
+/* Side-by-side mode */
+.viewer-container.sbs-mode {
+  display: flex;
+}
+
+.viewer-container.sbs-mode > #video-base {
+  position: relative;
+  width: 50%;
+}
+
+.viewer-container.sbs-mode > .video-overlay-container {
+  position: relative;
+  width: 50%;
+  clip-path: none !important;
+}
+
+.viewer-container.sbs-mode > .video-overlay-container .video-element {
+  position: relative;
+  width: 100%;
+}
+
+.viewer-container.sbs-mode .comparison-slider,
+.viewer-container.sbs-mode .slider-handle {
+  display: none;
 }

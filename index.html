@@ -12,6 +12,10 @@
   <div class="app-container">
     <header class="app-header">
       <h1>Video Viewer</h1>
+      <div class="header-actions">
+        <button id="btn-toggle-view" class="btn-header">Toggle View</button>
+        <button id="btn-render" class="btn-header primary">Render</button>
+      </div>
     </header>
     <main class="main-workspace">
       <div id="viewer-container" class="viewer-container">
@@ -84,6 +88,15 @@
         </div>
       </div>
     </main>
+  </div>
+  <div id="render-modal" class="modal-overlay">
+    <div class="modal-content">
+      <h2>Renderizando Video...</h2>
+      <div class="progress-bar">
+        <div id="render-progress" class="progress-fill"></div>
+      </div>
+      <p id="render-status">Preparando...</p>
+    </div>
   </div>
   <script type="module" src="./main.js"></script>
 </body>

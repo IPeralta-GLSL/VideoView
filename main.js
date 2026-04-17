@@ -102,7 +102,7 @@ const togglePlayPause = () => {
   if (audioCtx.state === 'suspended') {
     audioCtx.resume();
   }
-  
+
   if (isPlaying) {
     videoBase.pause();
     videoOverlay.pause();
@@ -165,7 +165,7 @@ const drawStaticWaveform = async (url, canvas) => {
   canvas.width = parent.clientWidth;
   canvas.height = parent.clientHeight;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
+
   try {
     const response = await fetch(url);
     const arrayBuffer = await response.arrayBuffer();
@@ -173,7 +173,7 @@ const drawStaticWaveform = async (url, canvas) => {
     const channelData = audioBuffer.getChannelData(0);
     const step = Math.ceil(channelData.length / canvas.width);
     const amp = canvas.height / 2;
-    
+
     ctx.fillStyle = '#8bf236';
     for (let i = 0; i < canvas.width; i++) {
       let min = 1.0;
@@ -215,4 +215,114 @@ dropRight.addEventListener('drop', (e) => handleDrop(e, videoOverlay, canvasWave
 window.addEventListener('load', () => {
   drawStaticWaveform(videoBase.querySelector('source').src, canvasWave1);
   drawStaticWaveform(videoOverlay.querySelector('source').src, canvasWave2);
+});
+
+const btnToggleView = document.getElementById('btn-toggle-view');
+const viewerContainer = document.getElementById('viewer-container');
+let viewMode = 'slider';
+
+btnToggleView.addEventListener('click', () => {
+  if (viewMode === 'slider') {
+    viewMode = 'sbs';
+    viewerContainer.classList.add('sbs-mode');
+    btnToggleView.textContent = 'Toggle View';
+  } else {
+    viewMode = 'slider';
+    viewerContainer.classList.remove('sbs-mode');
+    btnToggleView.textContent = 'Toggle View';
+  }
+});
+
+const btnRender = document.getElementById('btn-render');
+const renderModal = document.getElementById('render-modal');
+const renderProgress = document.getElementById('render-progress');
+const renderStatus = document.getElementById('render-status');
+
+btnRender.addEventListener('click', () => {
+  if (!audioInitialized) initAudio();
+
+  if (viewMode === 'slider') {
+    btnToggleView.click();
+  }
+
+  pauseVideos();
+  videoBase.currentTime = 0;
+  videoOverlay.currentTime = 0;
+
+  renderModal.classList.add('active');
+  renderStatus.textContent = 'Preparando...';
+  renderProgress.style.width = '0%';
+
+  let w1 = videoBase.videoWidth || 640;
+  let w2 = videoOverlay.videoWidth || 640;
+  let h1 = videoBase.videoHeight || 360;
+  let h2 = videoOverlay.videoHeight || 360;
+
+  const width = w1 + w2;
+  const height = Math.max(h1, h2);
+  const renderCanvas = document.createElement('canvas');
+  renderCanvas.width = width;
+  renderCanvas.height = height;
+  const ctx = renderCanvas.getContext('2d');
+
+  const stream = renderCanvas.captureStream(30);
+
+  const audioDest = audioCtx.createMediaStreamDestination();
+  gainNode1.connect(audioDest);
+  gainNode2.connect(audioDest);
+
+  audioDest.stream.getAudioTracks().forEach(track => {
+    stream.addTrack(track);
+  });
+
+  const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+  const chunks = [];
+
+  recorder.ondataavailable = e => {
+    if (e.data.size > 0) chunks.push(e.data);
+  };
+
+  const onRenderProgress = () => {
+    const pct = (videoBase.currentTime / duration) * 100;
+    renderProgress.style.width = `${pct}%`;
+    renderStatus.textContent = `Renderizando: ${Math.floor(pct)}%`;
+  };
+
+  const onRenderEnded = () => {
+    if (recorder.state === 'recording') recorder.stop();
+  };
+
+  recorder.onstop = () => {
+    const blob = new Blob(chunks, { type: 'video/webm' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'render.webm';
+    a.click();
+
+    renderModal.classList.remove('active');
+    gainNode1.disconnect(audioDest);
+    gainNode2.disconnect(audioDest);
+    videoBase.removeEventListener('timeupdate', onRenderProgress);
+    videoBase.removeEventListener('ended', onRenderEnded);
+  };
+
+  videoBase.addEventListener('timeupdate', onRenderProgress);
+  videoBase.addEventListener('ended', onRenderEnded);
+
+  const drawFrame = () => {
+    if (recorder.state !== 'recording') return;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, width, height);
+    if (w1) ctx.drawImage(videoBase, 0, 0, w1, h1);
+    if (w2) ctx.drawImage(videoOverlay, w1, 0, w2, h2);
+    requestAnimationFrame(drawFrame);
+  };
+
+  recorder.start();
+
+  setTimeout(() => {
+    playVideos();
+    drawFrame();
+  }, 500);
 });
