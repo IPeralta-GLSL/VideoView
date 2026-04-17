@@ -269,42 +269,35 @@ body {
   clip-path: polygon(0 0, 100% 0, 100% 60%, 50% 100%, 0 60%);
 }
 
-.mixer-panel {
-  width: 120px;
+.track-headers {
+  width: 220px;
   display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 8px 0;
+  flex-direction: column;
   background-color: #222;
 }
 
-.tracks-container {
-  display: flex;
-  gap: 16px;
-  height: 100%;
-}
-
-.audio-track {
+.track-header {
+  flex: 1;
+  border-bottom: 1px solid #111;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  height: 100%;
+  justify-content: center;
+  padding: 0 16px;
+  gap: 8px;
 }
 
-.fader {
-  appearance: slider-vertical;
-  -webkit-appearance: slider-vertical;
-  width: 20px;
-  height: 80px;
-  accent-color: #8bf236;
-  margin: 0;
-  cursor: pointer;
-}
-
-.audio-track label {
+.track-name {
   font-size: 11px;
-  color: #aaa;
+  color: #ccc;
   font-weight: 600;
-  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fader-horizontal {
+  width: 100%;
+  accent-color: #8bf236;
+  cursor: pointer;
+  margin: 0;
 }

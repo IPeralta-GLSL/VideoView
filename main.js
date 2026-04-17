@@ -18,6 +18,8 @@ const volTrack1 = document.getElementById('vol-track1');
 const volTrack2 = document.getElementById('vol-track2');
 const canvasWave1 = document.getElementById('canvas-waveform-1');
 const canvasWave2 = document.getElementById('canvas-waveform-2');
+const track1Name = document.getElementById('track1-name');
+const track2Name = document.getElementById('track2-name');
 
 let isPlaying = false;
 let duration = 0;
@@ -189,13 +191,14 @@ const drawStaticWaveform = async (url, canvas) => {
   }
 };
 
-const handleDrop = (e, videoElement, canvas) => {
+const handleDrop = (e, videoElement, canvas, nameElement) => {
   e.preventDefault();
   const file = e.dataTransfer.files[0];
   if (file && file.type.startsWith('video/')) {
     const url = URL.createObjectURL(file);
     videoElement.src = url;
     videoElement.load();
+    nameElement.textContent = file.name;
     drawStaticWaveform(url, canvas);
     if (isPlaying) togglePlayPause();
   }
@@ -203,11 +206,11 @@ const handleDrop = (e, videoElement, canvas) => {
 
 dropLeft.addEventListener('dragenter', () => dropLeft.classList.add('drag-over'));
 dropLeft.addEventListener('dragleave', () => dropLeft.classList.remove('drag-over'));
-dropLeft.addEventListener('drop', (e) => handleDrop(e, videoBase, canvasWave1));
+dropLeft.addEventListener('drop', (e) => handleDrop(e, videoBase, canvasWave1, track1Name));
 
 dropRight.addEventListener('dragenter', () => dropRight.classList.add('drag-over'));
 dropRight.addEventListener('dragleave', () => dropRight.classList.remove('drag-over'));
-dropRight.addEventListener('drop', (e) => handleDrop(e, videoOverlay, canvasWave2));
+dropRight.addEventListener('drop', (e) => handleDrop(e, videoOverlay, canvasWave2, track2Name));
 
 window.addEventListener('load', () => {
   drawStaticWaveform(videoBase.querySelector('source').src, canvasWave1);
