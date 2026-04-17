@@ -59,27 +59,29 @@
           <span id="duration-time">00:00:00:00</span>
         </div>
       </div>
-      <div class="timeline-container">
-        <div class="tracks-wrapper">
-          <div class="track">
-            <canvas class="waveform-canvas" id="canvas-waveform-1"></canvas>
+      <div class="bottom-panel">
+        <div class="timeline-container">
+          <div class="tracks-wrapper">
+            <div class="track">
+              <canvas class="waveform-canvas" id="canvas-waveform-1"></canvas>
+            </div>
+            <div class="track">
+              <canvas class="waveform-canvas" id="canvas-waveform-2"></canvas>
+            </div>
           </div>
-          <div class="track">
-            <canvas class="waveform-canvas" id="canvas-waveform-2"></canvas>
-          </div>
+          <input type="range" id="timeline-slider" class="timeline-slider" min="0" max="100" value="0" step="0.01">
+          <div class="playhead" id="playhead"></div>
         </div>
-        <input type="range" id="timeline-slider" class="timeline-slider" min="0" max="100" value="0" step="0.01">
-        <div class="playhead" id="playhead"></div>
-      </div>
-      <div class="mixer-panel">
-        <div class="tracks-container">
-          <div class="audio-track">
-            <label>Volumen Pista 1</label>
-            <input type="range" id="vol-track1" min="0" max="1" step="0.01" value="1">
-          </div>
-          <div class="audio-track">
-            <label>Volumen Pista 2</label>
-            <input type="range" id="vol-track2" min="0" max="1" step="0.01" value="1">
+        <div class="mixer-panel">
+          <div class="tracks-container">
+            <div class="audio-track">
+              <input type="range" class="fader" id="vol-track1" min="0" max="1" step="0.001" value="1" orient="vertical">
+              <label>A1</label>
+            </div>
+            <div class="audio-track">
+              <input type="range" class="fader" id="vol-track2" min="0" max="1" step="0.001" value="1" orient="vertical">
+              <label>A2</label>
+            </div>
           </div>
         </div>
       </div>
