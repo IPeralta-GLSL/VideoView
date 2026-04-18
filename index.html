@@ -89,13 +89,39 @@
       </div>
     </main>
   </div>
+  <div id="render-settings-modal" class="modal-overlay">
+    <div class="modal-content render-settings-content">
+      <h2>Render Settings</h2>
+      <div class="settings-grid">
+        <label>Resolution</label>
+        <select id="render-quality">
+          <option value="2160">4K (2160p)</option>
+          <option value="1080" selected>Full HD (1080p)</option>
+          <option value="720">HD (720p)</option>
+          <option value="480">SD (480p)</option>
+        </select>
+        <label>Codec</label>
+        <select id="render-codec">
+          <option value="vp9">VP9 &mdash; WebM</option>
+          <option value="vp8">VP8 &mdash; WebM</option>
+          <option value="h264">H.264 &mdash; MP4</option>
+          <option value="av1">AV1 &mdash; WebM</option>
+        </select>
+      </div>
+      <p id="render-hw-status" class="hw-status"></p>
+      <div class="modal-buttons">
+        <button id="btn-render-cancel" class="btn-header">Cancel</button>
+        <button id="btn-render-confirm" class="btn-header primary">Render</button>
+      </div>
+    </div>
+  </div>
   <div id="render-modal" class="modal-overlay">
     <div class="modal-content">
-      <h2>Renderizando Video...</h2>
+      <h2>Rendering...</h2>
       <div class="progress-bar">
         <div id="render-progress" class="progress-fill"></div>
       </div>
-      <p id="render-status">Preparando...</p>
+      <p id="render-status">Preparing...</p>
     </div>
   </div>
   <script type="module" src="./main.js"></script>

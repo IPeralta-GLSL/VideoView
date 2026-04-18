@@ -412,3 +412,50 @@ body {
 .viewer-container.sbs-mode .slider-handle {
   display: none;
 }
+
+.render-settings-content {
+  text-align: left;
+  width: 340px;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 10px 12px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.settings-grid label {
+  font-size: 12px;
+  color: #aaa;
+}
+
+.settings-grid select {
+  background-color: #1a1a1a;
+  border: 1px solid #444;
+  color: #ccc;
+  padding: 5px 8px;
+  font-size: 12px;
+  border-radius: 2px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.settings-grid select:focus {
+  outline: none;
+  border-color: #8bf236;
+}
+
+.hw-status {
+  font-size: 11px;
+  color: #8bf236;
+  min-height: 16px;
+  margin-bottom: 16px;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

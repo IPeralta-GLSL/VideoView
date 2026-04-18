@@ -270,58 +270,112 @@ btnToggleView.addEventListener('click', () => {
 });
 
 const btnRender = document.getElementById('btn-render');
+const renderSettingsModal = document.getElementById('render-settings-modal');
 const renderModal = document.getElementById('render-modal');
 const renderProgress = document.getElementById('render-progress');
 const renderStatus = document.getElementById('render-status');
+const hwStatus = document.getElementById('render-hw-status');
+const renderQuality = document.getElementById('render-quality');
+const renderCodec = document.getElementById('render-codec');
+
+const checkHardwareAccel = async () => {
+  hwStatus.textContent = '';
+  if (!window.VideoEncoder) return;
+  const codecMap = { vp9: 'vp09.00.10.08', vp8: 'vp8', h264: 'avc1.42001f', av1: 'av01.0.04M.08' };
+  try {
+    const result = await VideoEncoder.isConfigSupported({
+      codec: codecMap[renderCodec.value] || 'avc1.42001f',
+      width: 1920,
+      height: 1080,
+      hardwareAcceleration: 'prefer-hardware',
+    });
+    hwStatus.textContent = result.supported ? 'GPU acceleration: enabled' : 'GPU acceleration: not available';
+  } catch {
+    hwStatus.textContent = '';
+  }
+};
 
 btnRender.addEventListener('click', () => {
+  renderSettingsModal.classList.add('active');
+  checkHardwareAccel();
+});
+
+renderCodec.addEventListener('change', checkHardwareAccel);
+
+document.getElementById('btn-render-cancel').addEventListener('click', () => {
+  renderSettingsModal.classList.remove('active');
+});
+
+document.getElementById('btn-render-confirm').addEventListener('click', () => {
+  renderSettingsModal.classList.remove('active');
+  startRender();
+});
+
+const getMimeType = (codec) => {
+  const candidates = {
+    vp9: ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp9', 'video/webm'],
+    vp8: ['video/webm;codecs=vp8,opus', 'video/webm;codecs=vp8', 'video/webm'],
+    h264: ['video/mp4;codecs=h264,aac', 'video/mp4;codecs=avc1', 'video/webm'],
+    av1: ['video/webm;codecs=av01,opus', 'video/webm'],
+  };
+  for (const mime of (candidates[codec] || ['video/webm'])) {
+    if (MediaRecorder.isTypeSupported(mime)) return mime;
+  }
+  return 'video/webm';
+};
+
+const startRender = () => {
   if (!audioInitialized) initAudio();
 
-  if (viewMode === 'slider') {
-    btnToggleView.click();
-  }
+  const qualityHeight = parseInt(renderQuality.value);
+  const codec = renderCodec.value;
+  const mimeType = getMimeType(codec);
+  const ext = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
+  const bitrateMap = { 2160: 40000000, 1080: 16000000, 720: 8000000, 480: 4000000 };
+  const bitrate = bitrateMap[qualityHeight] || 8000000;
 
-  pauseVideos();
+  if (isPlaying) togglePlayPause();
   videoBase.currentTime = 0;
   videoOverlay.currentTime = 0;
 
-  renderModal.classList.add('active');
-  renderStatus.textContent = 'Preparando...';
-  renderProgress.style.width = '0%';
+  const vbH = videoBase.videoHeight || 1080;
+  const vbW = videoBase.videoWidth || 1920;
+  const voH = videoOverlay.videoHeight || 1080;
+  const voW = videoOverlay.videoWidth || 1920;
+  const scale1 = qualityHeight / vbH;
+  const scale2 = qualityHeight / voH;
+  const fw1 = Math.round(vbW * scale1);
+  const fw2 = Math.round(voW * scale2);
+  const fw = fw1 + fw2;
+  const fh = qualityHeight;
 
-  let w1 = videoBase.videoWidth || 640;
-  let w2 = videoOverlay.videoWidth || 640;
-  let h1 = videoBase.videoHeight || 360;
-  let h2 = videoOverlay.videoHeight || 360;
-
-  const width = w1 + w2;
-  const height = Math.max(h1, h2);
   const renderCanvas = document.createElement('canvas');
-  renderCanvas.width = width;
-  renderCanvas.height = height;
+  renderCanvas.width = fw;
+  renderCanvas.height = fh;
   const ctx = renderCanvas.getContext('2d');
 
   const stream = renderCanvas.captureStream(30);
-
   const audioDest = audioCtx.createMediaStreamDestination();
   gainNode1.connect(audioDest);
   gainNode2.connect(audioDest);
+  audioDest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
 
-  audioDest.stream.getAudioTracks().forEach(track => {
-    stream.addTrack(track);
-  });
-
-  const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: bitrate });
   const chunks = [];
 
-  recorder.ondataavailable = e => {
-    if (e.data.size > 0) chunks.push(e.data);
-  };
+  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+  renderModal.classList.add('active');
+  renderStatus.textContent = 'Preparing...';
+  renderProgress.style.width = '0%';
+
+  gainNode1.gain.value = 0;
+  gainNode2.gain.value = 0;
 
   const onRenderProgress = () => {
     const pct = (videoBase.currentTime / duration) * 100;
     renderProgress.style.width = `${pct}%`;
-    renderStatus.textContent = `Renderizando: ${Math.floor(pct)}%`;
+    renderStatus.textContent = `Rendering: ${Math.floor(pct)}%`;
   };
 
   const onRenderEnded = () => {
@@ -329,14 +383,15 @@ btnRender.addEventListener('click', () => {
   };
 
   recorder.onstop = () => {
-    const blob = new Blob(chunks, { type: 'video/webm' });
+    const blob = new Blob(chunks, { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'render.webm';
+    a.download = `render.${ext}`;
     a.click();
-
     renderModal.classList.remove('active');
+    gainNode1.gain.value = parseFloat(volTrack1.value);
+    gainNode2.gain.value = parseFloat(volTrack2.value);
     gainNode1.disconnect(audioDest);
     gainNode2.disconnect(audioDest);
     videoBase.removeEventListener('timeupdate', onRenderProgress);
@@ -349,16 +404,15 @@ btnRender.addEventListener('click', () => {
   const drawFrame = () => {
     if (recorder.state !== 'recording') return;
     ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, width, height);
-    if (w1) ctx.drawImage(videoBase, 0, 0, w1, h1);
-    if (w2) ctx.drawImage(videoOverlay, w1, 0, w2, h2);
+    ctx.fillRect(0, 0, fw, fh);
+    ctx.drawImage(videoBase, 0, 0, fw1, fh);
+    ctx.drawImage(videoOverlay, fw1, 0, fw2, fh);
     requestAnimationFrame(drawFrame);
   };
 
   recorder.start();
-
   setTimeout(() => {
     playVideos();
     drawFrame();
   }, 500);
-});
+};
