@@ -20,6 +20,47 @@ const canvasWave1 = document.getElementById('canvas-waveform-1');
 const canvasWave2 = document.getElementById('canvas-waveform-2');
 const track1Name = document.getElementById('track1-name');
 const track2Name = document.getElementById('track2-name');
+const bufferBar1 = document.getElementById('buffer-bar-1');
+const bufferBar2 = document.getElementById('buffer-bar-2');
+const masterMeterCanvas = document.getElementById('master-meter');
+const masterDbDisplay = document.getElementById('master-db');
+const masterFader = document.getElementById('master-fader');
+
+const drawBufferBar = (canvas, video) => {
+  const dur = video.duration;
+  if (!dur || isNaN(dur)) return;
+  const w = canvas.offsetWidth;
+  const h = canvas.offsetHeight;
+  if (!w || !h) return;
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#3a3a3a';
+  ctx.fillRect(0, 0, w, h);
+  const buffered = video.buffered;
+  for (let i = 0; i < buffered.length; i++) {
+    const x = (buffered.start(i) / dur) * w;
+    const bw = ((buffered.end(i) - buffered.start(i)) / dur) * w;
+    ctx.fillStyle = '#8bf236';
+    ctx.fillRect(x, 0, bw, h);
+  }
+  const pos = (video.currentTime / dur) * w;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(Math.max(0, pos - 1), 0, 2, h);
+};
+
+const updateBufferBars = () => {
+  drawBufferBar(bufferBar1, videoBase);
+  drawBufferBar(bufferBar2, videoOverlay);
+};
+
+videoBase.addEventListener('progress', updateBufferBars);
+videoOverlay.addEventListener('progress', updateBufferBars);
+videoBase.addEventListener('timeupdate', updateBufferBars);
+videoOverlay.addEventListener('timeupdate', updateBufferBars);
+videoBase.addEventListener('loadedmetadata', updateBufferBars);
+videoOverlay.addEventListener('loadedmetadata', updateBufferBars);
+window.addEventListener('resize', () => { updateBufferBars(); drawTimeRuler(); });
 
 let isPlaying = false;
 let duration = 0;
@@ -27,7 +68,88 @@ let dragCounter = 0;
 let isDraggingTimeline = false;
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 let audioInitialized = false;
-let gainNode1, gainNode2;
+let gainNode1, gainNode2, masterGainNode, masterAnalyser;
+
+const dbToLinear = (db) => db <= -60 ? 0 : Math.pow(10, db / 20);
+
+const timeRulerCanvas = document.getElementById('time-ruler');
+
+const drawTimeRuler = () => {
+  const c = timeRulerCanvas;
+  if (!c || !duration) return;
+  const w = c.offsetWidth;
+  const h = c.offsetHeight || 20;
+  if (!w) return;
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(0, 0, w, h);
+  let majorInterval, minorInterval;
+  if (duration <= 30) { majorInterval = 5; minorInterval = 1; }
+  else if (duration <= 300) { majorInterval = 30; minorInterval = 5; }
+  else if (duration <= 1800) { majorInterval = 60; minorInterval = 10; }
+  else { majorInterval = 300; minorInterval = 30; }
+  ctx.font = '9px "Courier New", monospace';
+  ctx.textAlign = 'left';
+  ctx.lineWidth = 1;
+  for (let t = 0; t <= duration; t += minorInterval) {
+    const x = Math.round((t / duration) * w) + 0.5;
+    const isMajor = Math.round(t) % majorInterval === 0;
+    ctx.beginPath();
+    ctx.strokeStyle = isMajor ? '#555' : '#333';
+    ctx.moveTo(x, isMajor ? 2 : h - 5);
+    ctx.lineTo(x, h);
+    ctx.stroke();
+    if (isMajor && x > 4) {
+      const mins = Math.floor(t / 60);
+      const secs = Math.floor(t % 60);
+      const label = mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`;
+      ctx.fillStyle = '#777';
+      ctx.fillText(label, x + 2, h - 5);
+    }
+  }
+};
+
+const drawMasterMeter = () => {
+  let db = -Infinity;
+  if (masterAnalyser) {
+    const buf = new Float32Array(masterAnalyser.fftSize);
+    masterAnalyser.getFloatTimeDomainData(buf);
+    let rms = 0;
+    for (let i = 0; i < buf.length; i++) rms += buf[i] * buf[i];
+    rms = Math.sqrt(rms / buf.length);
+    db = rms > 0 ? 20 * Math.log10(rms) : -Infinity;
+  }
+
+  const c = masterMeterCanvas;
+  const rect = c.getBoundingClientRect();
+  const w = rect.width || c.offsetWidth || 20;
+  const h = rect.height || c.offsetHeight || 200;
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, w, h);
+  const minDb = -60, maxDb = 6;
+  const range = maxDb - minDb;
+  const segments = 40;
+  const segH = h / segments;
+  const gap = Math.max(1, Math.floor(segH * 0.12));
+  for (let i = 0; i < segments; i++) {
+    const segDb = maxDb - (i / segments) * range;
+    const active = db >= segDb - (range / segments);
+    if (segDb > 0) ctx.fillStyle = active ? '#e84040' : '#3a1010';
+    else if (segDb > -6) ctx.fillStyle = active ? '#e8b040' : '#3a2a10';
+    else ctx.fillStyle = active ? '#8bf236' : '#1a3010';
+    ctx.fillRect(0, i * segH, w, segH - gap);
+  }
+
+  masterDbDisplay.textContent = isFinite(db) ? `${db.toFixed(1)} dB` : '-∞ dB';
+  requestAnimationFrame(drawMasterMeter);
+};
+
+drawMasterMeter();
 
 const initAudio = () => {
   if (audioInitialized) return;
@@ -35,14 +157,26 @@ const initAudio = () => {
   const source2 = audioCtx.createMediaElementSource(videoOverlay);
   gainNode1 = audioCtx.createGain();
   gainNode2 = audioCtx.createGain();
+  masterGainNode = audioCtx.createGain();
+  masterAnalyser = audioCtx.createAnalyser();
+  masterAnalyser.fftSize = 1024;
   gainNode1.gain.value = parseFloat(volTrack1.value);
   gainNode2.gain.value = parseFloat(volTrack2.value);
+  masterGainNode.gain.value = dbToLinear(parseFloat(masterFader.value));
   source1.connect(gainNode1);
   source2.connect(gainNode2);
-  gainNode1.connect(audioCtx.destination);
-  gainNode2.connect(audioCtx.destination);
+  gainNode1.connect(masterGainNode);
+  gainNode2.connect(masterGainNode);
+  masterGainNode.connect(masterAnalyser);
+  masterAnalyser.connect(audioCtx.destination);
   audioInitialized = true;
 };
+
+masterFader.addEventListener('input', () => {
+  const db = parseFloat(masterFader.value);
+  masterDbDisplay.textContent = `${db.toFixed(1)} dB`;
+  if (masterGainNode) masterGainNode.gain.value = dbToLinear(db);
+});
 
 const pauseVideos = () => {
   videoBase.pause();
@@ -87,6 +221,7 @@ videoBase.addEventListener('loadedmetadata', () => {
   durationTimeDisplay.textContent = formatTime(duration);
   timelineSlider.max = duration;
   updateTimeline();
+  drawTimeRuler();
 });
 
 videoBase.addEventListener('timeupdate', () => {
@@ -356,8 +491,8 @@ const startRender = () => {
 
   const stream = renderCanvas.captureStream(30);
   const audioDest = audioCtx.createMediaStreamDestination();
-  gainNode1.connect(audioDest);
-  gainNode2.connect(audioDest);
+  masterAnalyser.disconnect(audioCtx.destination);
+  masterGainNode.connect(audioDest);
   audioDest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
 
   const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: bitrate });
@@ -368,9 +503,6 @@ const startRender = () => {
   renderModal.classList.add('active');
   renderStatus.textContent = 'Preparing...';
   renderProgress.style.width = '0%';
-
-  gainNode1.gain.value = 0;
-  gainNode2.gain.value = 0;
 
   const onRenderProgress = () => {
     const pct = (videoBase.currentTime / duration) * 100;
@@ -390,10 +522,8 @@ const startRender = () => {
     a.download = `render.${ext}`;
     a.click();
     renderModal.classList.remove('active');
-    gainNode1.gain.value = parseFloat(volTrack1.value);
-    gainNode2.gain.value = parseFloat(volTrack2.value);
-    gainNode1.disconnect(audioDest);
-    gainNode2.disconnect(audioDest);
+    masterGainNode.disconnect(audioDest);
+    masterAnalyser.connect(audioCtx.destination);
     videoBase.removeEventListener('timeupdate', onRenderProgress);
     videoBase.removeEventListener('ended', onRenderEnded);
   };

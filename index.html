@@ -18,6 +18,7 @@
       </div>
     </header>
     <main class="main-workspace">
+      <div class="preview-row">
       <div id="viewer-container" class="viewer-container">
         <div id="drop-overlay" class="drop-overlay">
           <div id="drop-left" class="drop-side"><span>Soltar Video 1</span></div>
@@ -39,6 +40,15 @@
           </div>
         </div>
         <input type="range" id="comparison-slider" class="comparison-slider" min="0" max="100" value="50">
+      </div>
+      <div class="master-section">
+        <div class="master-label">MASTER</div>
+        <div class="master-controls">
+          <canvas id="master-meter" class="master-meter-canvas"></canvas>
+          <input type="range" id="master-fader" class="master-fader" min="-60" max="6" step="0.1" value="0">
+        </div>
+        <div class="master-db" id="master-db">0.0 dB</div>
+      </div>
       </div>
       <div class="transport-controls">
         <div class="timecode">
@@ -65,12 +75,15 @@
       </div>
       <div class="bottom-panel">
         <div class="timeline-container">
+          <canvas id="time-ruler" class="time-ruler"></canvas>
           <div class="tracks-wrapper">
             <div class="track">
               <canvas class="waveform-canvas" id="canvas-waveform-1"></canvas>
+              <canvas id="buffer-bar-1" class="buffer-bar"></canvas>
             </div>
             <div class="track">
               <canvas class="waveform-canvas" id="canvas-waveform-2"></canvas>
+              <canvas id="buffer-bar-2" class="buffer-bar"></canvas>
             </div>
           </div>
           <input type="range" id="timeline-slider" class="timeline-slider" min="0" max="100" value="0" step="0.01">
@@ -86,6 +99,7 @@
             <input type="range" class="fader-horizontal" id="vol-track2" min="0" max="1" step="0.001" value="1">
           </div>
         </div>
+
       </div>
     </main>
   </div>
