@@ -192,54 +192,51 @@ const playVideos = () => {
   videoOverlay.play();
 };
 
-let wipePos = 0.5;
+let wipeX = 0;
+let wipeY = 0;
 let wipeAngle = 0;
-const WIPE_MOVE = 142;
 
 const updateWipe = () => {
-  const p = wipePos;
+  const rect = viewerContainer.getBoundingClientRect();
+  const W = rect.width || viewerContainer.offsetWidth || 800;
+  const H = rect.height || viewerContainer.offsetHeight || 450;
   const θ = wipeAngle * Math.PI / 180;
   const sinθ = Math.sin(θ);
   const cosθ = Math.cos(θ);
-  const BIG = 200;
-  const MOVE = WIPE_MOVE;
-  const cx = 50 + (p - 0.5) * cosθ * MOVE;
-  const cy = 50 + (p - 0.5) * sinθ * MOVE;
-  const ax = cx - sinθ * BIG, ay = cy + cosθ * BIG;
-  const bx = cx + sinθ * BIG, by = cy - cosθ * BIG;
+  const BIG = Math.sqrt(W * W + H * H);
+  const lx = W / 2 + wipeX;
+  const ly = H / 2 + wipeY;
+  const ax = lx - sinθ * BIG, ay = ly + cosθ * BIG;
+  const bx = lx + sinθ * BIG, by = ly - cosθ * BIG;
   const dx = ax - cosθ * BIG, dy = ay - sinθ * BIG;
-  const cx2 = bx - cosθ * BIG, cy2 = by - sinθ * BIG;
+  const ex = bx - cosθ * BIG, ey = by - sinθ * BIG;
+  const px = v => `${(v / W * 100).toFixed(3)}%`;
+  const py = v => `${(v / H * 100).toFixed(3)}%`;
   overlayContainer.style.clipPath =
-    `polygon(${ax}% ${ay}%, ${dx}% ${dy}%, ${cx2}% ${cy2}%, ${bx}% ${by}%)`;
-  sliderHandle.style.left = `${cx}%`;
-  sliderHandle.style.top = `${cy}%`;
+    `polygon(${px(ax)} ${py(ay)}, ${px(dx)} ${py(dy)}, ${px(ex)} ${py(ey)}, ${px(bx)} ${py(by)})`;
+  sliderHandle.style.left = `${(lx / W * 100).toFixed(3)}%`;
+  sliderHandle.style.top = `${(ly / H * 100).toFixed(3)}%`;
   sliderHandle.style.transform = `translate(-50%, -50%) rotate(${wipeAngle}deg)`;
   wipeAngleDisplay.textContent = `${Math.round(wipeAngle)}°`;
   wipeAngleInput.value = Math.round(wipeAngle);
 };
 
 updateWipe();
+window.addEventListener('resize', updateWipe);
 
 wipeAngleInput.addEventListener('input', () => {
-  wipeAngle = parseFloat(wipeAngleInput.value);
+  wipeAngle = Math.max(0, Math.min(180, parseFloat(wipeAngleInput.value)));
   updateWipe();
 });
 
 wipeResetBtn.addEventListener('click', () => {
   wipeAngle = 0;
+  wipeX = 0;
+  wipeY = 0;
   updateWipe();
 });
 
 let isDraggingWipe = false;
-
-const getWipePosFromPointer = (e) => {
-  const rect = viewerContainer.getBoundingClientRect();
-  const px = (e.clientX - rect.left) / rect.width * 100;
-  const py = (e.clientY - rect.top) / rect.height * 100;
-  const θ = wipeAngle * Math.PI / 180;
-  const dot = (px - 50) * Math.cos(θ) + (py - 50) * Math.sin(θ);
-  return Math.max(0, Math.min(1, 0.5 + dot / WIPE_MOVE));
-};
 
 viewerContainer.addEventListener('pointerdown', (e) => {
   if (viewerContainer.classList.contains('sbs-mode')) return;
@@ -247,13 +244,17 @@ viewerContainer.addEventListener('pointerdown', (e) => {
   if (e.target.closest('.wipe-toolbar')) return;
   isDraggingWipe = true;
   viewerContainer.setPointerCapture(e.pointerId);
-  wipePos = getWipePosFromPointer(e);
+  const rect = viewerContainer.getBoundingClientRect();
+  wipeX = e.clientX - rect.left - rect.width / 2;
+  wipeY = e.clientY - rect.top - rect.height / 2;
   updateWipe();
 });
 
 viewerContainer.addEventListener('pointermove', (e) => {
   if (!isDraggingWipe) return;
-  wipePos = getWipePosFromPointer(e);
+  const rect = viewerContainer.getBoundingClientRect();
+  wipeX = e.clientX - rect.left - rect.width / 2;
+  wipeY = e.clientY - rect.top - rect.height / 2;
   updateWipe();
 });
 
@@ -262,8 +263,9 @@ viewerContainer.addEventListener('pointercancel', () => { isDraggingWipe = false
 
 viewerContainer.addEventListener('wheel', (e) => {
   if (viewerContainer.classList.contains('sbs-mode')) return;
+  if (!e.ctrlKey) return;
   e.preventDefault();
-  wipeAngle = ((wipeAngle + (e.deltaY > 0 ? 1 : -1)) + 360) % 360;
+  wipeAngle = Math.max(0, Math.min(180, wipeAngle + (e.deltaY > 0 ? 1 : -1)));
   updateWipe();
 }, { passive: false });
 

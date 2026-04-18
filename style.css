@@ -122,19 +122,17 @@ body {
 
 .wipe-toolbar {
   position: absolute;
-  bottom: 10px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 0;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: rgba(0, 0, 0, 0.65);
-  border: 1px solid #3a3a3a;
-  border-radius: 20px;
-  padding: 4px 12px 4px 10px;
+  gap: 4px;
+  background-color: #222222;
+  border-bottom: 1px solid #111;
+  padding: 4px 10px;
   z-index: 15;
   pointer-events: auto;
-  backdrop-filter: blur(4px);
 }
 
 .wipe-toolbar-label {
@@ -143,37 +141,50 @@ body {
   text-transform: uppercase;
   letter-spacing: 1px;
   user-select: none;
+  margin-right: 2px;
 }
 
 .wipe-angle-range {
-  width: 80px;
+  width: 100px;
   accent-color: #8bf236;
   cursor: pointer;
+  height: 4px;
 }
 
 .wipe-angle-display {
   font-family: "Courier New", monospace;
-  font-size: 10px;
+  font-size: 12px;
   color: #8bf236;
-  min-width: 28px;
+  min-width: 32px;
   text-align: right;
   user-select: none;
+  padding: 0 4px;
 }
 
 .wipe-reset-btn {
-  background: none;
-  border: none;
-  color: #666;
+  background-color: #282828;
+  border: 1px solid #1a1a1a;
+  color: #ccc;
+  width: 28px;
+  height: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   cursor: pointer;
   font-size: 14px;
-  padding: 0;
   line-height: 1;
-  display: flex;
-  align-items: center;
+  border-radius: 2px;
+  flex-shrink: 0;
 }
 
 .wipe-reset-btn:hover {
-  color: #aaa;
+  background-color: #383838;
+  color: #fff;
+}
+
+.wipe-reset-btn:active {
+  background-color: #8bf236;
+  color: #111;
 }
 
 .slider-handle-button {
