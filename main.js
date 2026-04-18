@@ -26,6 +26,33 @@ let duration = 0;
 let dragCounter = 0;
 let isDraggingTimeline = false;
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let audioInitialized = false;
+let gainNode1, gainNode2;
+
+const initAudio = () => {
+  if (audioInitialized) return;
+  const source1 = audioCtx.createMediaElementSource(videoBase);
+  const source2 = audioCtx.createMediaElementSource(videoOverlay);
+  gainNode1 = audioCtx.createGain();
+  gainNode2 = audioCtx.createGain();
+  gainNode1.gain.value = parseFloat(volTrack1.value);
+  gainNode2.gain.value = parseFloat(volTrack2.value);
+  source1.connect(gainNode1);
+  source2.connect(gainNode2);
+  gainNode1.connect(audioCtx.destination);
+  gainNode2.connect(audioCtx.destination);
+  audioInitialized = true;
+};
+
+const pauseVideos = () => {
+  videoBase.pause();
+  videoOverlay.pause();
+};
+
+const playVideos = () => {
+  videoBase.play();
+  videoOverlay.play();
+};
 
 slider.addEventListener('input', (e) => {
   const val = e.target.value;
@@ -99,18 +126,14 @@ timelineSlider.addEventListener('input', () => {
 });
 
 const togglePlayPause = () => {
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
-
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  initAudio();
   if (isPlaying) {
-    videoBase.pause();
-    videoOverlay.pause();
+    pauseVideos();
     iconPlay.style.display = 'block';
     iconPause.style.display = 'none';
   } else {
-    videoBase.play();
-    videoOverlay.play();
+    playVideos();
     iconPlay.style.display = 'none';
     iconPause.style.display = 'block';
   }
@@ -137,11 +160,13 @@ btnStart.addEventListener('click', () => {
 });
 
 volTrack1.addEventListener('input', (e) => {
-  videoBase.volume = e.target.value;
+  if (gainNode1) gainNode1.gain.value = parseFloat(e.target.value);
+  else videoBase.volume = parseFloat(e.target.value);
 });
 
 volTrack2.addEventListener('input', (e) => {
-  videoOverlay.volume = e.target.value;
+  if (gainNode2) gainNode2.gain.value = parseFloat(e.target.value);
+  else videoOverlay.volume = parseFloat(e.target.value);
 });
 
 window.addEventListener('dragenter', (e) => {
