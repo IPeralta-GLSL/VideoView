@@ -265,7 +265,7 @@ viewerContainer.addEventListener('wheel', (e) => {
   if (viewerContainer.classList.contains('sbs-mode')) return;
   if (!e.ctrlKey) return;
   e.preventDefault();
-  wipeAngle = Math.max(0, Math.min(180, wipeAngle + (e.deltaY > 0 ? 1 : -1)));
+  wipeAngle = ((wipeAngle + (e.deltaY > 0 ? 10 : -10)) + 180) % 180;
   updateWipe();
 }, { passive: false });
 
