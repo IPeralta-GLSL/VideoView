@@ -119,6 +119,17 @@ const togglePlayPause = () => {
 
 btnPlayPause.addEventListener('click', togglePlayPause);
 
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    togglePlayPause();
+  }
+});
+
+document.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+});
+
 btnStart.addEventListener('click', () => {
   videoBase.currentTime = 0;
   videoOverlay.currentTime = 0;
