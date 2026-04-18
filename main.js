@@ -217,6 +217,7 @@ const updateWipe = () => {
   sliderHandle.style.left = `${(lx / W * 100).toFixed(3)}%`;
   sliderHandle.style.top = `${(ly / H * 100).toFixed(3)}%`;
   sliderHandle.style.transform = `translate(-50%, -50%) rotate(${wipeAngle}deg)`;
+  sliderHandle.style.height = `${Math.max(W, H) * 2}px`;
   wipeAngleDisplay.textContent = `${Math.round(wipeAngle)}°`;
   wipeAngleInput.value = Math.round(wipeAngle);
 };
