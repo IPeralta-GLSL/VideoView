@@ -357,8 +357,13 @@ const drawStaticWaveform = async (url, canvas) => {
       ctx.fillRect(i, (1 + min) * amp, 1, Math.max(1, (max - min) * amp));
     }
   } catch (error) {
-    ctx.fillStyle = '#444';
-    ctx.fillRect(0, canvas.height / 2, canvas.width, 1);
+    ctx.fillStyle = '#262626';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#555';
+    ctx.font = '11px "Courier New", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('No audio', canvas.width / 2, canvas.height / 2);
   }
 };
 
@@ -415,6 +420,7 @@ const renderCodec = document.getElementById('render-codec');
 
 const checkHardwareAccel = async () => {
   hwStatus.textContent = '';
+  updateFormatDisplay();
   if (!window.VideoEncoder) return;
   const codecMap = { vp9: 'vp09.00.10.08', vp8: 'vp8', h264: 'avc1.42001f', av1: 'av01.0.04M.08' };
   try {
@@ -436,6 +442,7 @@ btnRender.addEventListener('click', () => {
 });
 
 renderCodec.addEventListener('change', checkHardwareAccel);
+updateFormatDisplay();
 
 document.getElementById('btn-render-cancel').addEventListener('click', () => {
   renderSettingsModal.classList.remove('active');
@@ -450,13 +457,27 @@ const getMimeType = (codec) => {
   const candidates = {
     vp9: ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp9', 'video/webm'],
     vp8: ['video/webm;codecs=vp8,opus', 'video/webm;codecs=vp8', 'video/webm'],
-    h264: ['video/mp4;codecs=h264,aac', 'video/mp4;codecs=avc1', 'video/webm'],
-    av1: ['video/webm;codecs=av01,opus', 'video/webm'],
+    h264: ['video/x-matroska;codecs=avc1,opus', 'video/x-matroska;codecs=avc1', 'video/webm;codecs=h264,opus', 'video/webm;codecs=h264', 'video/webm'],
+    av1: ['video/webm;codecs=av01,opus', 'video/webm;codecs=av01', 'video/webm'],
   };
   for (const mime of (candidates[codec] || ['video/webm'])) {
     if (MediaRecorder.isTypeSupported(mime)) return mime;
   }
   return 'video/webm';
+};
+
+const getExt = (mimeType) => {
+  if (mimeType.startsWith('video/mp4')) return 'mp4';
+  if (mimeType.startsWith('video/x-matroska')) return 'mkv';
+  return 'webm';
+};
+
+const renderFormatDisplay = document.getElementById('render-format-display');
+
+const updateFormatDisplay = () => {
+  const mime = getMimeType(renderCodec.value);
+  const ext = getExt(mime);
+  renderFormatDisplay.textContent = `${mime.split(';')[0]} → .${ext}`;
 };
 
 const startRender = () => {
@@ -465,7 +486,7 @@ const startRender = () => {
   const qualityHeight = parseInt(renderQuality.value);
   const codec = renderCodec.value;
   const mimeType = getMimeType(codec);
-  const ext = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
+  const ext = getExt(mimeType);
   const bitrateMap = { 2160: 40000000, 1080: 16000000, 720: 8000000, 480: 4000000 };
   const bitrate = bitrateMap[qualityHeight] || 8000000;
 
