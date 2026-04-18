@@ -92,7 +92,7 @@ videoBase.addEventListener('loadedmetadata', () => {
 videoBase.addEventListener('timeupdate', () => {
   if (!isDraggingTimeline) {
     updateTimeline();
-    if (Math.abs(videoBase.currentTime - videoOverlay.currentTime) > 0.1) {
+    if (Math.abs(videoBase.currentTime - videoOverlay.currentTime) > 0.033) {
       videoOverlay.currentTime = videoBase.currentTime;
     }
   }
@@ -403,16 +403,18 @@ const startRender = () => {
 
   const drawFrame = () => {
     if (recorder.state !== 'recording') return;
+    const drift = Math.abs(videoBase.currentTime - videoOverlay.currentTime);
+    if (drift > 0.033) videoOverlay.currentTime = videoBase.currentTime;
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, fw, fh);
     ctx.drawImage(videoBase, 0, 0, fw1, fh);
     ctx.drawImage(videoOverlay, fw1, 0, fw2, fh);
-    requestAnimationFrame(drawFrame);
+    setTimeout(drawFrame, 0);
   };
 
   recorder.start();
   setTimeout(() => {
     playVideos();
     drawFrame();
-  }, 500);
+  }, 200);
 };
