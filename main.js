@@ -679,11 +679,11 @@ const handleDrop = (e, videoElement, canvas, nameElement) => {
 
 dropLeft.addEventListener('dragenter', () => dropLeft.classList.add('drag-over'));
 dropLeft.addEventListener('dragleave', () => dropLeft.classList.remove('drag-over'));
-dropLeft.addEventListener('drop', (e) => handleDrop(e, videoBase, canvasWave1, track1Name));
+dropLeft.addEventListener('drop', (e) => handleDrop(e, videoOverlay, canvasWave2, track2Name));
 
 dropRight.addEventListener('dragenter', () => dropRight.classList.add('drag-over'));
 dropRight.addEventListener('dragleave', () => dropRight.classList.remove('drag-over'));
-dropRight.addEventListener('drop', (e) => handleDrop(e, videoOverlay, canvasWave2, track2Name));
+dropRight.addEventListener('drop', (e) => handleDrop(e, videoBase, canvasWave1, track1Name));
 
 window.addEventListener('load', () => {
   drawStaticWaveform(videoBase.querySelector('source').src, canvasWave1);
