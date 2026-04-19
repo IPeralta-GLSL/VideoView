@@ -745,25 +745,60 @@ const updateFormatDisplay = () => {
 };
 
 const checkHardwareAccel = async () => {
-  hwStatus.textContent = '';
+  hwStatus.textContent = 'Detecting…';
   updateFormatDisplay();
-  if (!window.VideoEncoder) return;
+
+  // Detect GPU name via WebGPU (works independently of video encoding HW accel)
+  let gpuName = null;
+  if (navigator.gpu) {
+    try {
+      const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+      if (adapter) {
+        const info = await adapter.requestAdapterInfo();
+        gpuName = info.description || info.device || info.vendor || null;
+      }
+    } catch { /* WebGPU not available */ }
+  }
+
+  if (!window.VideoEncoder) {
+    hwStatus.textContent = gpuName ? `GPU: ${gpuName} — WebCodecs not available` : 'Software encoding (CPU)';
+    return;
+  }
+
   const codecMap = { vp9: 'vp09.00.10.08', vp8: 'vp8', h264: 'avc1.42001f', av1: 'av01.0.04M.08' };
+  const codec = codecMap[renderCodec.value] || 'avc1.42001f';
+
   try {
-    const result = await VideoEncoder.isConfigSupported({
-      codec: codecMap[renderCodec.value] || 'avc1.42001f',
+    // Try strict hardware-only first (definitive answer)
+    const hwResult = await VideoEncoder.isConfigSupported({
+      codec,
       width: 1920,
       height: 1080,
-      hardwareAcceleration: 'prefer-hardware',
+      hardwareAcceleration: 'require-hardware',
     });
-    hwStatus.textContent = result.supported ? 'GPU acceleration: enabled' : 'Software encoding (CPU)';
+
+    if (hwResult.supported) {
+      hwStatus.textContent = gpuName ? `GPU accel: enabled (${gpuName})` : 'GPU acceleration: enabled';
+      hwStatus.style.color = '#4caf50';
+      return;
+    }
+
+    // Hardware not available — show GPU name if we got it and hint about VAAPI flags
+    if (gpuName) {
+      hwStatus.innerHTML = `GPU: ${gpuName} — <span title="Launch Chromium with --enable-features=VaapiVideoEncoder to enable GPU encoding">HW encoding inactive (VAAPI)</span>`;
+    } else {
+      hwStatus.textContent = 'Software encoding (CPU)';
+    }
+    hwStatus.style.color = '#e8b040';
   } catch {
-    hwStatus.textContent = '';
+    hwStatus.textContent = gpuName ? `GPU: ${gpuName} — Software encoding (CPU)` : 'Software encoding (CPU)';
+    hwStatus.style.color = '#888';
   }
 };
 
 btnRender.addEventListener('click', () => {
   renderSettingsModal.classList.add('active');
+  hwStatus.style.color = '';
   checkHardwareAccel();
 });
 
