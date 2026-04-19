@@ -748,7 +748,6 @@ const checkHardwareAccel = async () => {
   hwStatus.textContent = 'Detecting…';
   updateFormatDisplay();
 
-  // Detect GPU name via WebGPU (works independently of video encoding HW accel)
   let gpuName = null;
   if (navigator.gpu) {
     try {
