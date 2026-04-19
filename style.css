@@ -606,10 +606,70 @@ body {
   flex: 1;
   border-bottom: 1px solid #111;
   display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  padding: 0;
+  overflow: hidden;
+}
+
+.track-header-info {
+  flex: 1;
+  display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 0 16px;
-  gap: 8px;
+  gap: 6px;
+  padding: 6px 10px;
+  min-width: 0;
+}
+
+.track-header-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.track-header-bottom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-mute {
+  flex-shrink: 0;
+  background-color: #282828;
+  border: 1px solid #1a1a1a;
+  color: #666;
+  width: 20px;
+  height: 18px;
+  font-size: 9px;
+  font-weight: 700;
+  font-family: "Courier New", monospace;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.btn-mute:hover {
+  background-color: #383838;
+  color: #ccc;
+}
+
+.btn-mute.active {
+  background-color: #e84040;
+  color: #fff;
+  border-color: #c03030;
+}
+
+.track-vu {
+  width: 10px;
+  flex-shrink: 0;
+  align-self: stretch;
+  display: block;
+  border-right: 1px solid #111;
 }
 
 .track-name {

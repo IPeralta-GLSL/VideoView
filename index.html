@@ -116,12 +116,24 @@
         </div>
         <div class="track-headers">
           <div class="track-header">
-            <div class="track-name" id="track1-name">BigBuckBunny.mp4</div>
-            <input type="range" class="fader-horizontal" id="vol-track1" min="0" max="1" step="0.001" value="1">
+            <canvas id="track-vu-1" class="track-vu"></canvas>
+            <div class="track-header-info">
+              <div class="track-header-top">
+                <button id="btn-mute-1" class="btn-mute" title="Mute track 1">M</button>
+                <div class="track-name" id="track1-name">BigBuckBunny.mp4</div>
+              </div>
+              <input type="range" class="fader-horizontal" id="vol-track1" min="0" max="1" step="0.001" value="1">
+            </div>
           </div>
           <div class="track-header">
-            <div class="track-name" id="track2-name">ElephantsDream.mp4</div>
-            <input type="range" class="fader-horizontal" id="vol-track2" min="0" max="1" step="0.001" value="1">
+            <canvas id="track-vu-2" class="track-vu"></canvas>
+            <div class="track-header-info">
+              <div class="track-header-top">
+                <button id="btn-mute-2" class="btn-mute" title="Mute track 2">M</button>
+                <div class="track-name" id="track2-name">ElephantsDream.mp4</div>
+              </div>
+              <input type="range" class="fader-horizontal" id="vol-track2" min="0" max="1" step="0.001" value="1">
+            </div>
           </div>
         </div>
 

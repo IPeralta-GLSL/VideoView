@@ -74,7 +74,9 @@ let dragCounter = 0;
 let isDraggingTimeline = false;
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 let audioInitialized = false;
-let gainNode1, gainNode2, masterGainNode, masterAnalyser;
+let gainNode1, gainNode2, masterGainNode, masterAnalyser, analyser1, analyser2;
+let muted1 = false, muted2 = false;
+let savedGain1 = 1, savedGain2 = 1;
 
 const dbToLinear = (db) => db <= -60 ? 0 : Math.pow(10, db / 20);
 
@@ -192,8 +194,14 @@ const initAudio = () => {
   gainNode1.gain.value = parseFloat(volTrack1.value);
   gainNode2.gain.value = parseFloat(volTrack2.value);
   masterGainNode.gain.value = dbToLinear(parseFloat(masterFader.value));
+  analyser1 = audioCtx.createAnalyser();
+  analyser1.fftSize = 256;
+  analyser2 = audioCtx.createAnalyser();
+  analyser2.fftSize = 256;
   source1.connect(gainNode1);
   source2.connect(gainNode2);
+  gainNode1.connect(analyser1);
+  gainNode2.connect(analyser2);
   gainNode1.connect(masterGainNode);
   gainNode2.connect(masterGainNode);
   masterGainNode.connect(masterAnalyser);
@@ -212,9 +220,35 @@ const pauseVideos = () => {
   videoOverlay.pause();
 };
 
+const seekBoth = (t) => {
+  videoBase.currentTime = t;
+  videoOverlay.currentTime = t;
+};
+
+let syncRafId = null;
+
+const syncLoop = () => {
+  if (!isPlaying) return;
+  const drift = videoBase.currentTime - videoOverlay.currentTime;
+  if (Math.abs(drift) > 0.05) {
+    videoOverlay.currentTime = videoBase.currentTime;
+  } else if (Math.abs(drift) > 0.01) {
+    videoOverlay.playbackRate = videoBase.playbackRate * (1 + drift * 2);
+  } else {
+    videoOverlay.playbackRate = videoBase.playbackRate;
+  }
+  syncRafId = requestAnimationFrame(syncLoop);
+};
+
 const playVideos = () => {
-  videoBase.play();
-  videoOverlay.play();
+  const t = videoBase.currentTime;
+  videoOverlay.currentTime = t;
+  Promise.all([
+    videoBase.play(),
+    videoOverlay.play()
+  ]).catch(() => {});
+  if (syncRafId) cancelAnimationFrame(syncRafId);
+  syncRafId = requestAnimationFrame(syncLoop);
 };
 
 let wipeX = 0;
@@ -377,9 +411,12 @@ videoBase.addEventListener('loadedmetadata', () => {
 videoBase.addEventListener('timeupdate', () => {
   if (!isDraggingTimeline) {
     updateTimeline();
-    if (Math.abs(videoBase.currentTime - videoOverlay.currentTime) > 0.033) {
-      videoOverlay.currentTime = videoBase.currentTime;
-    }
+  }
+});
+
+videoBase.addEventListener('seeked', () => {
+  if (Math.abs(videoBase.currentTime - videoOverlay.currentTime) > 0.01) {
+    videoOverlay.currentTime = videoBase.currentTime;
   }
 });
 
@@ -394,16 +431,12 @@ timelineSlider.addEventListener('touchstart', () => isDraggingTimeline = true);
 
 timelineSlider.addEventListener('mouseup', () => {
   isDraggingTimeline = false;
-  const t = parseFloat(timelineSlider.value);
-  videoBase.currentTime = t;
-  videoOverlay.currentTime = t;
+  seekBoth(parseFloat(timelineSlider.value));
 });
 
 timelineSlider.addEventListener('touchend', () => {
   isDraggingTimeline = false;
-  const t = parseFloat(timelineSlider.value);
-  videoBase.currentTime = t;
-  videoOverlay.currentTime = t;
+  seekBoth(parseFloat(timelineSlider.value));
 });
 
 timelineSlider.addEventListener('input', () => {
@@ -415,6 +448,8 @@ const togglePlayPause = () => {
   initAudio();
   if (isPlaying) {
     pauseVideos();
+    if (syncRafId) { cancelAnimationFrame(syncRafId); syncRafId = null; }
+    videoOverlay.playbackRate = videoBase.playbackRate;
     iconPlay.style.display = 'block';
     iconPause.style.display = 'none';
   } else {
@@ -439,8 +474,7 @@ document.addEventListener('contextmenu', (e) => {
 });
 
 btnStart.addEventListener('click', () => {
-  videoBase.currentTime = 0;
-  videoOverlay.currentTime = 0;
+  seekBoth(0);
   updateTimeline();
 });
 
@@ -452,23 +486,20 @@ const playbackSpeed = document.getElementById('playback-speed');
 btnPrevFrame.addEventListener('click', () => {
   if (!duration) return;
   if (isPlaying) togglePlayPause();
-  const t = Math.max(0, videoBase.currentTime - FRAME_DUR);
-  videoBase.currentTime = t;
-  videoOverlay.currentTime = t;
+  seekBoth(Math.max(0, videoBase.currentTime - FRAME_DUR));
 });
 
 btnNextFrame.addEventListener('click', () => {
   if (!duration) return;
   if (isPlaying) togglePlayPause();
-  const t = Math.min(duration, videoBase.currentTime + FRAME_DUR);
-  videoBase.currentTime = t;
-  videoOverlay.currentTime = t;
+  seekBoth(Math.min(duration, videoBase.currentTime + FRAME_DUR));
 });
 
 playbackSpeed.addEventListener('change', () => {
   const rate = parseFloat(playbackSpeed.value);
   videoBase.playbackRate = rate;
   videoOverlay.playbackRate = rate;
+  if (!isPlaying) videoOverlay.currentTime = videoBase.currentTime;
 });
 
 const updateSliderFill = (input) => {
@@ -493,6 +524,68 @@ volTrack2.addEventListener('input', (e) => {
 
 updateSliderFill(volTrack1);
 updateSliderFill(volTrack2);
+
+const btnMute1 = document.getElementById('btn-mute-1');
+const btnMute2 = document.getElementById('btn-mute-2');
+const trackVu1 = document.getElementById('track-vu-1');
+const trackVu2 = document.getElementById('track-vu-2');
+
+btnMute1.addEventListener('click', () => {
+  muted1 = !muted1;
+  btnMute1.classList.toggle('active', muted1);
+  if (gainNode1) {
+    if (muted1) { savedGain1 = gainNode1.gain.value; gainNode1.gain.value = 0; }
+    else gainNode1.gain.value = savedGain1;
+  } else {
+    videoBase.volume = muted1 ? 0 : parseFloat(volTrack1.value);
+  }
+});
+
+btnMute2.addEventListener('click', () => {
+  muted2 = !muted2;
+  btnMute2.classList.toggle('active', muted2);
+  if (gainNode2) {
+    if (muted2) { savedGain2 = gainNode2.gain.value; gainNode2.gain.value = 0; }
+    else gainNode2.gain.value = savedGain2;
+  } else {
+    videoOverlay.volume = muted2 ? 0 : parseFloat(volTrack2.value);
+  }
+});
+
+const drawTrackVu = (canvas, analyser, muted) => {
+  const w = canvas.offsetWidth || 8;
+  const h = canvas.offsetHeight || 40;
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, w, h);
+  if (!analyser || muted) return;
+  const buf = new Float32Array(analyser.fftSize);
+  analyser.getFloatTimeDomainData(buf);
+  let rms = 0;
+  for (let i = 0; i < buf.length; i++) rms += buf[i] * buf[i];
+  rms = Math.sqrt(rms / buf.length);
+  const db = rms > 0 ? 20 * Math.log10(rms) : -Infinity;
+  const minDb = -60, maxDb = 0;
+  const level = Math.max(0, Math.min(1, (db - minDb) / (maxDb - minDb)));
+  const fillH = Math.round(level * h);
+  const y = h - fillH;
+  const grad = ctx.createLinearGradient(0, h, 0, 0);
+  grad.addColorStop(0, '#8bf236');
+  grad.addColorStop(0.7, '#e8b040');
+  grad.addColorStop(1, '#e84040');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, y, w, fillH);
+};
+
+const drawTrackVus = () => {
+  drawTrackVu(trackVu1, analyser1, muted1);
+  drawTrackVu(trackVu2, analyser2, muted2);
+  requestAnimationFrame(drawTrackVus);
+};
+
+drawTrackVus();
 
 window.addEventListener('dragenter', (e) => {
   e.preventDefault();
