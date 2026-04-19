@@ -769,7 +769,6 @@ const checkHardwareAccel = async () => {
   const codec = codecMap[renderCodec.value] || 'avc1.42001f';
 
   try {
-    // Try strict hardware-only first (definitive answer)
     const hwResult = await VideoEncoder.isConfigSupported({
       codec,
       width: 1920,
@@ -783,7 +782,6 @@ const checkHardwareAccel = async () => {
       return;
     }
 
-    // Hardware not available — show GPU name if we got it and hint about VAAPI flags
     if (gpuName) {
       hwStatus.innerHTML = `GPU: ${gpuName} — <span title="Add VaapiVideoEncoder to --enable-features in your Chromium launch flags">HW encoding inactive (VAAPI)</span>`;
     } else {

@@ -541,8 +541,6 @@ body {
 }
 
 .master-fader {
-  -webkit-appearance: slider-vertical;
-  appearance: auto;
   writing-mode: vertical-lr;
   direction: rtl;
   width: 24px;
@@ -815,7 +813,6 @@ body {
   color: #aaa;
 }
 
-/* Side-by-side mode */
 .viewer-container.sbs-mode {
   display: flex;
 }
