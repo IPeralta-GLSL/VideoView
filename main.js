@@ -43,18 +43,16 @@ const drawBufferBar = (canvas, video) => {
   if (canvas.height !== h) canvas.height = h;
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, w, h);
-  ctx.fillStyle = '#2a2a2a';
+  ctx.fillStyle = '#1a1a1a';
   ctx.fillRect(0, 0, w, h);
   const buffered = video.buffered;
   for (let i = 0; i < buffered.length; i++) {
     const x = (buffered.start(i) / dur) * w;
     const bw = ((buffered.end(i) - buffered.start(i)) / dur) * w;
-    ctx.fillStyle = '#4a7a1e';
+    ctx.fillStyle = '#3a5a1a';
     ctx.fillRect(x, 0, bw, h);
   }
-  const pos = (video.currentTime / dur) * w;
-  ctx.fillStyle = '#8bf236';
-  ctx.fillRect(0, 0, pos, h);
+  const pos = Math.round((video.currentTime / dur) * w);
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(Math.max(0, pos - 1), 0, 2, h);
 };
