@@ -222,6 +222,8 @@ const updateWipe = () => {
   sliderHandle.style.height = `${Math.max(W, H) * 2}px`;
   wipeAngleDisplay.textContent = `${Math.round(wipeAngle)}°`;
   wipeAngleInput.value = Math.round(wipeAngle);
+  const pct = (Math.round(wipeAngle) / 180) * 100;
+  wipeAngleInput.style.background = `linear-gradient(to right, #8bf236 0%, #8bf236 ${pct}%, #2a2a2a ${pct}%, #2a2a2a 100%)`;
 };
 
 updateWipe();
@@ -403,15 +405,28 @@ btnStart.addEventListener('click', () => {
   updateTimeline();
 });
 
+const updateSliderFill = (input) => {
+  const min = parseFloat(input.min) || 0;
+  const max = parseFloat(input.max) || 1;
+  const val = parseFloat(input.value);
+  const pct = ((val - min) / (max - min)) * 100;
+  input.style.background = `linear-gradient(to right, #8bf236 0%, #8bf236 ${pct}%, #2a2a2a ${pct}%, #2a2a2a 100%)`;
+};
+
 volTrack1.addEventListener('input', (e) => {
   if (gainNode1) gainNode1.gain.value = parseFloat(e.target.value);
   else videoBase.volume = parseFloat(e.target.value);
+  updateSliderFill(e.target);
 });
 
 volTrack2.addEventListener('input', (e) => {
   if (gainNode2) gainNode2.gain.value = parseFloat(e.target.value);
   else videoOverlay.volume = parseFloat(e.target.value);
+  updateSliderFill(e.target);
 });
+
+updateSliderFill(volTrack1);
+updateSliderFill(volTrack2);
 
 window.addEventListener('dragenter', (e) => {
   e.preventDefault();
@@ -454,7 +469,6 @@ const drawStaticWaveform = async (url, canvas) => {
     const step = Math.ceil(channelData.length / canvas.width);
     const amp = canvas.height / 2;
 
-    ctx.fillStyle = '#8bf236';
     for (let i = 0; i < canvas.width; i++) {
       let min = 1.0;
       let max = -1.0;
@@ -463,6 +477,8 @@ const drawStaticWaveform = async (url, canvas) => {
         if (datum < min) min = datum;
         if (datum > max) max = datum;
       }
+      const hue = Math.round((i / canvas.width) * 300);
+      ctx.fillStyle = `hsl(${hue}, 100%, 55%)`;
       ctx.fillRect(i, (1 + min) * amp, 1, Math.max(1, (max - min) * amp));
     }
   } catch (error) {
@@ -505,14 +521,18 @@ window.addEventListener('load', () => {
 const btnToggleView = document.getElementById('btn-toggle-view');
 let viewMode = 'slider';
 
+const wipeToolbar = document.getElementById('wipe-toolbar');
+
 btnToggleView.addEventListener('click', () => {
   if (viewMode === 'slider') {
     viewMode = 'sbs';
     viewerContainer.classList.add('sbs-mode');
+    wipeToolbar.style.display = 'none';
     btnToggleView.textContent = 'Toggle View';
   } else {
     viewMode = 'slider';
     viewerContainer.classList.remove('sbs-mode');
+    wipeToolbar.style.display = '';
     btnToggleView.textContent = 'Toggle View';
   }
 });
