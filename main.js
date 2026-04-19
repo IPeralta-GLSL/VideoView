@@ -756,7 +756,7 @@ const checkHardwareAccel = async () => {
       height: 1080,
       hardwareAcceleration: 'prefer-hardware',
     });
-    hwStatus.textContent = result.supported ? 'GPU acceleration: enabled' : 'GPU acceleration: not available';
+    hwStatus.textContent = result.supported ? 'GPU acceleration: enabled' : 'Software encoding (CPU)';
   } catch {
     hwStatus.textContent = '';
   }
