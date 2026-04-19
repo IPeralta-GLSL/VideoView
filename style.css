@@ -120,19 +120,42 @@ body {
   z-index: 5;
 }
 
-.wipe-toolbar {
+.snap-guide {
   position: absolute;
+  pointer-events: none;
+  z-index: 6;
+  background: #8bf236;
+  opacity: 0;
+  transition: opacity 0.08s;
+}
+
+.snap-guide.active {
+  opacity: 0.6;
+}
+
+.snap-guide-v {
   top: 0;
+  left: 50%;
+  width: 1px;
+  height: 100%;
+  transform: translateX(-50%);
+}
+
+.snap-guide-h {
   left: 0;
-  right: 0;
+  top: 50%;
+  width: 100%;
+  height: 1px;
+  transform: translateY(-50%);
+}
+
+.wipe-toolbar {
   display: flex;
   align-items: center;
-  gap: 4px;
-  background-color: #222222;
-  border-bottom: 1px solid #111;
-  padding: 4px 10px;
-  z-index: 15;
-  pointer-events: auto;
+  gap: 6px;
+  padding: 0 10px;
+  border-left: 1px solid #333;
+  border-right: 1px solid #333;
 }
 
 .wipe-toolbar-label {
@@ -560,8 +583,7 @@ body {
   width: 100%;
 }
 
-.viewer-container.sbs-mode .slider-handle,
-.viewer-container.sbs-mode .wipe-toolbar {
+.viewer-container.sbs-mode .slider-handle {
   display: none;
 }
 

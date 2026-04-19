@@ -5,6 +5,8 @@ const viewerContainer = document.getElementById('viewer-container');
 const wipeAngleInput = document.getElementById('wipe-angle-input');
 const wipeAngleDisplay = document.getElementById('wipe-angle-display');
 const wipeResetBtn = document.getElementById('wipe-reset-btn');
+const snapGuideV = document.getElementById('snap-guide-v');
+const snapGuideH = document.getElementById('snap-guide-h');
 const videoBase = document.getElementById('video-base');
 const videoOverlay = document.getElementById('video-overlay');
 const btnStart = document.getElementById('btn-start');
@@ -251,16 +253,47 @@ viewerContainer.addEventListener('pointerdown', (e) => {
   updateWipe();
 });
 
+const SNAP_THRESHOLD = 8;
+
 viewerContainer.addEventListener('pointermove', (e) => {
   if (!isDraggingWipe) return;
   const rect = viewerContainer.getBoundingClientRect();
   wipeX = e.clientX - rect.left - rect.width / 2;
   wipeY = e.clientY - rect.top - rect.height / 2;
+
+  const normAngle = wipeAngle % 180;
+  const isVertical = normAngle < 5 || normAngle > 175;
+  const isHorizontal = normAngle > 85 && normAngle < 95;
+
+  let snappedV = false;
+  let snappedH = false;
+
+  if (isVertical && Math.abs(wipeX) < SNAP_THRESHOLD) {
+    wipeX = 0;
+    snappedV = true;
+  }
+  if (isHorizontal && Math.abs(wipeY) < SNAP_THRESHOLD) {
+    wipeY = 0;
+    snappedH = true;
+  }
+
+  const snapped = snappedV || snappedH;
+  snapGuideV.classList.toggle('active', snapped);
+  snapGuideH.classList.toggle('active', snapped);
+
   updateWipe();
 });
 
-viewerContainer.addEventListener('pointerup', () => { isDraggingWipe = false; });
-viewerContainer.addEventListener('pointercancel', () => { isDraggingWipe = false; });
+viewerContainer.addEventListener('pointerup', () => {
+  isDraggingWipe = false;
+  snapGuideV.classList.remove('active');
+  snapGuideH.classList.remove('active');
+});
+viewerContainer.addEventListener('pointercancel', () => {
+  isDraggingWipe = false;
+  snapGuideV.classList.remove('active');
+  snapGuideH.classList.remove('active');
+});
 
 viewerContainer.addEventListener('wheel', (e) => {
   if (viewerContainer.classList.contains('sbs-mode')) return;
