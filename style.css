@@ -664,6 +664,36 @@ body {
   border-color: #c03030;
 }
 
+.btn-solo {
+  flex-shrink: 0;
+  background-color: #282828;
+  border: 1px solid #1a1a1a;
+  color: #666;
+  width: 20px;
+  height: 18px;
+  font-size: 9px;
+  font-weight: 700;
+  font-family: "Courier New", monospace;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.btn-solo:hover {
+  background-color: #383838;
+  color: #ccc;
+}
+
+.btn-solo.active {
+  background-color: #e8b040;
+  color: #111;
+  border-color: #c09030;
+}
+
 .track-vu {
   width: 10px;
   flex-shrink: 0;

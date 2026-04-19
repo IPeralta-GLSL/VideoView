@@ -76,6 +76,7 @@ const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 let audioInitialized = false;
 let gainNode1, gainNode2, masterGainNode, masterAnalyser, analyser1, analyser2;
 let muted1 = false, muted2 = false;
+let soloed1 = false, soloed2 = false;
 let savedGain1 = 1, savedGain2 = 1;
 
 const dbToLinear = (db) => db <= -60 ? 0 : Math.pow(10, db / 20);
@@ -511,15 +512,13 @@ const updateSliderFill = (input) => {
 };
 
 volTrack1.addEventListener('input', (e) => {
-  if (gainNode1) gainNode1.gain.value = parseFloat(e.target.value);
-  else videoBase.volume = parseFloat(e.target.value);
   updateSliderFill(e.target);
+  applySoloMute();
 });
 
 volTrack2.addEventListener('input', (e) => {
-  if (gainNode2) gainNode2.gain.value = parseFloat(e.target.value);
-  else videoOverlay.volume = parseFloat(e.target.value);
   updateSliderFill(e.target);
+  applySoloMute();
 });
 
 updateSliderFill(volTrack1);
@@ -527,29 +526,43 @@ updateSliderFill(volTrack2);
 
 const btnMute1 = document.getElementById('btn-mute-1');
 const btnMute2 = document.getElementById('btn-mute-2');
+const btnSolo1 = document.getElementById('btn-solo-1');
+const btnSolo2 = document.getElementById('btn-solo-2');
 const trackVu1 = document.getElementById('track-vu-1');
 const trackVu2 = document.getElementById('track-vu-2');
+
+const applySoloMute = () => {
+  const anySolo = soloed1 || soloed2;
+  const g1 = (!muted1 && (!anySolo || soloed1)) ? (gainNode1 ? parseFloat(volTrack1.value) : null) : 0;
+  const g2 = (!muted2 && (!anySolo || soloed2)) ? (gainNode2 ? parseFloat(volTrack2.value) : null) : 0;
+  if (gainNode1) gainNode1.gain.value = g1 ?? 0;
+  else videoBase.volume = g1 ?? 0;
+  if (gainNode2) gainNode2.gain.value = g2 ?? 0;
+  else videoOverlay.volume = g2 ?? 0;
+};
 
 btnMute1.addEventListener('click', () => {
   muted1 = !muted1;
   btnMute1.classList.toggle('active', muted1);
-  if (gainNode1) {
-    if (muted1) { savedGain1 = gainNode1.gain.value; gainNode1.gain.value = 0; }
-    else gainNode1.gain.value = savedGain1;
-  } else {
-    videoBase.volume = muted1 ? 0 : parseFloat(volTrack1.value);
-  }
+  applySoloMute();
 });
 
 btnMute2.addEventListener('click', () => {
   muted2 = !muted2;
   btnMute2.classList.toggle('active', muted2);
-  if (gainNode2) {
-    if (muted2) { savedGain2 = gainNode2.gain.value; gainNode2.gain.value = 0; }
-    else gainNode2.gain.value = savedGain2;
-  } else {
-    videoOverlay.volume = muted2 ? 0 : parseFloat(volTrack2.value);
-  }
+  applySoloMute();
+});
+
+btnSolo1.addEventListener('click', () => {
+  soloed1 = !soloed1;
+  btnSolo1.classList.toggle('active', soloed1);
+  applySoloMute();
+});
+
+btnSolo2.addEventListener('click', () => {
+  soloed2 = !soloed2;
+  btnSolo2.classList.toggle('active', soloed2);
+  applySoloMute();
 });
 
 const drawTrackVu = (canvas, analyser, muted) => {
@@ -704,6 +717,32 @@ const renderStatus = document.getElementById('render-status');
 const hwStatus = document.getElementById('render-hw-status');
 const renderQuality = document.getElementById('render-quality');
 const renderCodec = document.getElementById('render-codec');
+const renderFormatDisplay = document.getElementById('render-format-display');
+
+const getMimeType = (codec) => {
+  const candidates = {
+    vp9: ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp9', 'video/webm'],
+    vp8: ['video/webm;codecs=vp8,opus', 'video/webm;codecs=vp8', 'video/webm'],
+    h264: ['video/x-matroska;codecs=avc1,opus', 'video/x-matroska;codecs=avc1', 'video/webm;codecs=h264,opus', 'video/webm;codecs=h264', 'video/webm'],
+    av1: ['video/webm;codecs=av01,opus', 'video/webm;codecs=av01', 'video/webm'],
+  };
+  for (const mime of (candidates[codec] || ['video/webm'])) {
+    if (MediaRecorder.isTypeSupported(mime)) return mime;
+  }
+  return 'video/webm';
+};
+
+const getExt = (mimeType) => {
+  if (mimeType.startsWith('video/mp4')) return 'mp4';
+  if (mimeType.startsWith('video/x-matroska')) return 'mkv';
+  return 'webm';
+};
+
+const updateFormatDisplay = () => {
+  const mime = getMimeType(renderCodec.value);
+  const ext = getExt(mime);
+  renderFormatDisplay.textContent = `${mime.split(';')[0]} → .${ext}`;
+};
 
 const checkHardwareAccel = async () => {
   hwStatus.textContent = '';
@@ -739,33 +778,6 @@ document.getElementById('btn-render-confirm').addEventListener('click', () => {
   renderSettingsModal.classList.remove('active');
   startRender();
 });
-
-const getMimeType = (codec) => {
-  const candidates = {
-    vp9: ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp9', 'video/webm'],
-    vp8: ['video/webm;codecs=vp8,opus', 'video/webm;codecs=vp8', 'video/webm'],
-    h264: ['video/x-matroska;codecs=avc1,opus', 'video/x-matroska;codecs=avc1', 'video/webm;codecs=h264,opus', 'video/webm;codecs=h264', 'video/webm'],
-    av1: ['video/webm;codecs=av01,opus', 'video/webm;codecs=av01', 'video/webm'],
-  };
-  for (const mime of (candidates[codec] || ['video/webm'])) {
-    if (MediaRecorder.isTypeSupported(mime)) return mime;
-  }
-  return 'video/webm';
-};
-
-const getExt = (mimeType) => {
-  if (mimeType.startsWith('video/mp4')) return 'mp4';
-  if (mimeType.startsWith('video/x-matroska')) return 'mkv';
-  return 'webm';
-};
-
-const renderFormatDisplay = document.getElementById('render-format-display');
-
-const updateFormatDisplay = () => {
-  const mime = getMimeType(renderCodec.value);
-  const ext = getExt(mime);
-  renderFormatDisplay.textContent = `${mime.split(';')[0]} → .${ext}`;
-};
 
 const startRender = () => {
   if (!audioInitialized) initAudio();
