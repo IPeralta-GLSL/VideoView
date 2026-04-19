@@ -35,22 +35,26 @@ const masterFader = document.getElementById('master-fader');
 const drawBufferBar = (canvas, video) => {
   const dur = video.duration;
   if (!dur || isNaN(dur)) return;
-  const w = canvas.offsetWidth;
-  const h = canvas.offsetHeight;
-  if (!w || !h) return;
-  canvas.width = w;
-  canvas.height = h;
+  const rect = canvas.getBoundingClientRect();
+  const w = Math.round(rect.width) || canvas.parentElement?.clientWidth || 0;
+  const h = Math.round(rect.height) || 8;
+  if (!w) return;
+  if (canvas.width !== w) canvas.width = w;
+  if (canvas.height !== h) canvas.height = h;
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#3a3a3a';
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = '#2a2a2a';
   ctx.fillRect(0, 0, w, h);
   const buffered = video.buffered;
   for (let i = 0; i < buffered.length; i++) {
     const x = (buffered.start(i) / dur) * w;
     const bw = ((buffered.end(i) - buffered.start(i)) / dur) * w;
-    ctx.fillStyle = '#8bf236';
+    ctx.fillStyle = '#4a7a1e';
     ctx.fillRect(x, 0, bw, h);
   }
   const pos = (video.currentTime / dur) * w;
+  ctx.fillStyle = '#8bf236';
+  ctx.fillRect(0, 0, pos, h);
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(Math.max(0, pos - 1), 0, 2, h);
 };
@@ -64,8 +68,10 @@ videoBase.addEventListener('progress', updateBufferBars);
 videoOverlay.addEventListener('progress', updateBufferBars);
 videoBase.addEventListener('timeupdate', updateBufferBars);
 videoOverlay.addEventListener('timeupdate', updateBufferBars);
-videoBase.addEventListener('loadedmetadata', updateBufferBars);
-videoOverlay.addEventListener('loadedmetadata', updateBufferBars);
+videoBase.addEventListener('loadedmetadata', () => { updateBufferBars(); setTimeout(updateBufferBars, 100); });
+videoOverlay.addEventListener('loadedmetadata', () => { updateBufferBars(); setTimeout(updateBufferBars, 100); });
+videoBase.addEventListener('canplay', updateBufferBars);
+videoOverlay.addEventListener('canplay', updateBufferBars);
 window.addEventListener('resize', () => { updateBufferBars(); drawTimeRuler(); });
 
 let isPlaying = false;
@@ -673,6 +679,7 @@ const handleDrop = (e, videoElement, canvas, nameElement) => {
     videoElement.load();
     nameElement.textContent = file.name;
     drawStaticWaveform(url, canvas);
+    setTimeout(updateBufferBars, 300);
     if (isPlaying) togglePlayPause();
   }
 };
