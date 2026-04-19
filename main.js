@@ -785,7 +785,7 @@ const checkHardwareAccel = async () => {
 
     // Hardware not available — show GPU name if we got it and hint about VAAPI flags
     if (gpuName) {
-      hwStatus.innerHTML = `GPU: ${gpuName} — <span title="Launch Chromium with --enable-features=VaapiVideoEncoder to enable GPU encoding">HW encoding inactive (VAAPI)</span>`;
+      hwStatus.innerHTML = `GPU: ${gpuName} — <span title="Add VaapiVideoEncoder to --enable-features in your Chromium launch flags">HW encoding inactive (VAAPI)</span>`;
     } else {
       hwStatus.textContent = 'Software encoding (CPU)';
     }
