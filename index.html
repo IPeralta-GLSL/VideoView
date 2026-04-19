@@ -58,13 +58,19 @@
       </div>
       </div>
       <div class="transport-controls">
-        <div class="timecode">
+        <div class="timecode" id="timecode-left">
           <span id="current-time">00:00:00:00</span>
+          <button id="btn-timecode-mode" class="btn-timecode-mode" title="Toggle frames/time">TC</button>
         </div>
         <div class="controls-group">
-          <button id="btn-start" class="btn-transport">
+          <button id="btn-start" class="btn-transport" title="Go to start">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
               <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+            </svg>
+          </button>
+          <button id="btn-prev-frame" class="btn-transport" title="Previous frame">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M6 6h2v12H6zm10 0L8 12l8 6V6z" />
             </svg>
           </button>
           <button id="btn-play-pause" class="btn-transport">
@@ -75,6 +81,18 @@
               <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
             </svg>
           </button>
+          <button id="btn-next-frame" class="btn-transport" title="Next frame">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M6 6l8 6-8 6V6zm10 0h2v12h-2z" />
+            </svg>
+          </button>
+          <select id="playback-speed" class="playback-speed-select" title="Playback speed">
+            <option value="0.25">0.25x</option>
+            <option value="0.5">0.5x</option>
+            <option value="1" selected>1x</option>
+            <option value="1.5">1.5x</option>
+            <option value="2">2x</option>
+          </select>
         </div>
         <div class="timecode right">
           <span id="duration-time">00:00:00:00</span>

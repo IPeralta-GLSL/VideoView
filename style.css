@@ -351,6 +351,56 @@ body {
   font-family: "Courier New", Courier, monospace;
   font-size: 14px;
   color: #8bf236;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-timecode-mode {
+  background-color: #282828;
+  border: 1px solid #1a1a1a;
+  color: #777;
+  padding: 2px 5px;
+  font-size: 9px;
+  font-family: "Courier New", monospace;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  border-radius: 0;
+  line-height: 1;
+}
+
+.btn-timecode-mode:hover {
+  background-color: #383838;
+  color: #ccc;
+}
+
+.btn-timecode-mode.active {
+  background-color: #8bf236;
+  color: #111;
+}
+
+.playback-speed-select {
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: #282828;
+  border: 1px solid #1a1a1a;
+  color: #ccc;
+  padding: 0 6px;
+  font-size: 11px;
+  font-family: "Courier New", monospace;
+  height: 28px;
+  cursor: pointer;
+  border-radius: 0;
+  outline: none;
+}
+
+.playback-speed-select:hover {
+  background-color: #383838;
+  color: #fff;
+}
+
+.playback-speed-select:focus {
+  border-color: #555;
 }
 
 .bottom-panel {

@@ -91,28 +91,51 @@ const drawTimeRuler = () => {
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#1a1a1a';
   ctx.fillRect(0, 0, w, h);
-  let majorInterval, minorInterval;
-  if (duration <= 30) { majorInterval = 5; minorInterval = 1; }
-  else if (duration <= 300) { majorInterval = 30; minorInterval = 5; }
-  else if (duration <= 1800) { majorInterval = 60; minorInterval = 10; }
-  else { majorInterval = 300; minorInterval = 30; }
   ctx.font = '9px "Courier New", monospace';
   ctx.textAlign = 'left';
   ctx.lineWidth = 1;
-  for (let t = 0; t <= duration; t += minorInterval) {
-    const x = Math.round((t / duration) * w) + 0.5;
-    const isMajor = Math.round(t) % majorInterval === 0;
-    ctx.beginPath();
-    ctx.strokeStyle = isMajor ? '#555' : '#333';
-    ctx.moveTo(x, isMajor ? 2 : h - 5);
-    ctx.lineTo(x, h);
-    ctx.stroke();
-    if (isMajor && x > 4) {
-      const mins = Math.floor(t / 60);
-      const secs = Math.floor(t % 60);
-      const label = mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`;
-      ctx.fillStyle = '#777';
-      ctx.fillText(label, x + 2, h - 5);
+
+  if (timecodeMode === 'frames') {
+    const totalFrames = Math.floor(duration * 24);
+    let majorInterval, minorInterval;
+    if (totalFrames <= 120) { majorInterval = 24; minorInterval = 6; }
+    else if (totalFrames <= 720) { majorInterval = 120; minorInterval = 24; }
+    else if (totalFrames <= 4320) { majorInterval = 240; minorInterval = 48; }
+    else { majorInterval = 1440; minorInterval = 240; }
+    for (let f = 0; f <= totalFrames; f += minorInterval) {
+      const x = Math.round((f / totalFrames) * w) + 0.5;
+      const isMajor = f % majorInterval === 0;
+      ctx.beginPath();
+      ctx.strokeStyle = isMajor ? '#555' : '#333';
+      ctx.moveTo(x, isMajor ? 2 : h - 5);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+      if (isMajor && x > 4) {
+        ctx.fillStyle = '#777';
+        ctx.fillText(`F${f}`, x + 2, h - 5);
+      }
+    }
+  } else {
+    let majorInterval, minorInterval;
+    if (duration <= 30) { majorInterval = 5; minorInterval = 1; }
+    else if (duration <= 300) { majorInterval = 30; minorInterval = 5; }
+    else if (duration <= 1800) { majorInterval = 60; minorInterval = 10; }
+    else { majorInterval = 300; minorInterval = 30; }
+    for (let t = 0; t <= duration; t += minorInterval) {
+      const x = Math.round((t / duration) * w) + 0.5;
+      const isMajor = Math.round(t) % majorInterval === 0;
+      ctx.beginPath();
+      ctx.strokeStyle = isMajor ? '#555' : '#333';
+      ctx.moveTo(x, isMajor ? 2 : h - 5);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+      if (isMajor && x > 4) {
+        const mins = Math.floor(t / 60);
+        const secs = Math.floor(t % 60);
+        const label = mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`;
+        ctx.fillStyle = '#777';
+        ctx.fillText(label, x + 2, h - 5);
+      }
     }
   }
 };
@@ -315,6 +338,22 @@ const formatTime = (timeInSeconds) => {
   return `${pad(h)}:${pad(m)}:${pad(s)}:${pad(f)}`;
 };
 
+const formatFrame = (timeInSeconds) => {
+  if (isNaN(timeInSeconds)) return 'F 0';
+  return `F ${Math.floor(timeInSeconds * 24)}`;
+};
+
+let timecodeMode = 'time';
+const btnTimecodeMode = document.getElementById('btn-timecode-mode');
+
+btnTimecodeMode.addEventListener('click', () => {
+  timecodeMode = timecodeMode === 'time' ? 'frames' : 'time';
+  btnTimecodeMode.classList.toggle('active', timecodeMode === 'frames');
+  updateTimeline();
+  if (duration) durationTimeDisplay.textContent = timecodeMode === 'frames' ? formatFrame(duration) : formatTime(duration);
+  drawTimeRuler();
+});
+
 const updateTimeline = () => {
   if (videoBase.readyState > 0) {
     const current = isDraggingTimeline ? parseFloat(timelineSlider.value) : videoBase.currentTime;
@@ -323,13 +362,13 @@ const updateTimeline = () => {
     if (!isDraggingTimeline) {
       timelineSlider.value = current;
     }
-    currentTimeDisplay.textContent = formatTime(current);
+    currentTimeDisplay.textContent = timecodeMode === 'frames' ? formatFrame(current) : formatTime(current);
   }
 };
 
 videoBase.addEventListener('loadedmetadata', () => {
   duration = videoBase.duration;
-  durationTimeDisplay.textContent = formatTime(duration);
+  durationTimeDisplay.textContent = timecodeMode === 'frames' ? formatFrame(duration) : formatTime(duration);
   timelineSlider.max = duration;
   updateTimeline();
   drawTimeRuler();
@@ -403,6 +442,33 @@ btnStart.addEventListener('click', () => {
   videoBase.currentTime = 0;
   videoOverlay.currentTime = 0;
   updateTimeline();
+});
+
+const FRAME_DUR = 1 / 24;
+const btnPrevFrame = document.getElementById('btn-prev-frame');
+const btnNextFrame = document.getElementById('btn-next-frame');
+const playbackSpeed = document.getElementById('playback-speed');
+
+btnPrevFrame.addEventListener('click', () => {
+  if (!duration) return;
+  if (isPlaying) togglePlayPause();
+  const t = Math.max(0, videoBase.currentTime - FRAME_DUR);
+  videoBase.currentTime = t;
+  videoOverlay.currentTime = t;
+});
+
+btnNextFrame.addEventListener('click', () => {
+  if (!duration) return;
+  if (isPlaying) togglePlayPause();
+  const t = Math.min(duration, videoBase.currentTime + FRAME_DUR);
+  videoBase.currentTime = t;
+  videoOverlay.currentTime = t;
+});
+
+playbackSpeed.addEventListener('change', () => {
+  const rate = parseFloat(playbackSpeed.value);
+  videoBase.playbackRate = rate;
+  videoOverlay.playbackRate = rate;
 });
 
 const updateSliderFill = (input) => {
