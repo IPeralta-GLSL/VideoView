@@ -26,6 +26,17 @@ const canvasWave1 = document.getElementById('canvas-waveform-1');
 const canvasWave2 = document.getElementById('canvas-waveform-2');
 const track1Name = document.getElementById('track1-name');
 const track2Name = document.getElementById('track2-name');
+
+[track1Name, track2Name].forEach(el => {
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+  });
+  el.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain').replace(/\n/g, ' ');
+    document.execCommand('insertText', false, text);
+  });
+});
 const bufferBar1 = document.getElementById('buffer-bar-1');
 const bufferBar2 = document.getElementById('buffer-bar-2');
 const masterMeterCanvas = document.getElementById('master-meter');
@@ -70,12 +81,14 @@ videoBase.addEventListener('loadedmetadata', () => { updateBufferBars(); setTime
 videoOverlay.addEventListener('loadedmetadata', () => { updateBufferBars(); setTimeout(updateBufferBars, 100); });
 videoBase.addEventListener('canplay', updateBufferBars);
 videoOverlay.addEventListener('canplay', updateBufferBars);
-window.addEventListener('resize', () => { updateBufferBars(); drawTimeRuler(); });
+window.addEventListener('resize', () => { updateBufferBars(); drawTimeRuler(); updateInOutRange(); });
 
 let isPlaying = false;
 let duration = 0;
 let dragCounter = 0;
 let isDraggingTimeline = false;
+let inPoint = null;
+let outPoint = null;
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 let audioInitialized = false;
 let gainNode1, gainNode2, masterGainNode, masterAnalyser, analyser1, analyser2;
@@ -507,6 +520,129 @@ playbackSpeed.addEventListener('change', () => {
   if (!isPlaying) videoOverlay.currentTime = videoBase.currentTime;
 });
 
+const inoutRange = document.getElementById('inout-range');
+const inoutHandleIn = document.getElementById('inout-handle-in');
+const inoutHandleOut = document.getElementById('inout-handle-out');
+const btnMarkIn = document.getElementById('btn-mark-in');
+const btnMarkOut = document.getElementById('btn-mark-out');
+const btnClearInOut = document.getElementById('btn-clear-inout');
+
+const updateInOutRange = () => {
+  if (!duration || (inPoint === null && outPoint === null)) {
+    inoutRange.style.display = 'none';
+    inoutHandleIn.style.display = 'none';
+    inoutHandleOut.style.display = 'none';
+    return;
+  }
+  const i = (inPoint ?? 0) / duration;
+  const o = (outPoint ?? duration) / duration;
+  inoutRange.style.left = `${i * 100}%`;
+  inoutRange.style.width = `${(o - i) * 100}%`;
+  inoutRange.style.display = 'block';
+  if (inPoint !== null) {
+    inoutHandleIn.style.left = `${i * 100}%`;
+    inoutHandleIn.style.display = 'block';
+  } else {
+    inoutHandleIn.style.display = 'none';
+  }
+  if (outPoint !== null) {
+    inoutHandleOut.style.left = `${o * 100}%`;
+    inoutHandleOut.style.display = 'block';
+  } else {
+    inoutHandleOut.style.display = 'none';
+  }
+};
+
+const getTimeFromClientX = (clientX) => {
+  const rect = inoutRange.parentElement.getBoundingClientRect();
+  const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
+  return (x / rect.width) * duration;
+};
+
+inoutHandleIn.addEventListener('mousedown', (e) => {
+  e.preventDefault(); e.stopPropagation();
+  const onMove = (e) => {
+    const t = Math.min(getTimeFromClientX(e.clientX), outPoint !== null ? outPoint - 0.05 : duration);
+    inPoint = Math.max(0, t);
+    seekBoth(inPoint);
+    btnMarkIn.classList.add('active');
+    updateInOutRange();
+  };
+  const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+});
+
+inoutHandleOut.addEventListener('mousedown', (e) => {
+  e.preventDefault(); e.stopPropagation();
+  const onMove = (e) => {
+    const t = Math.max(getTimeFromClientX(e.clientX), inPoint !== null ? inPoint + 0.05 : 0);
+    outPoint = Math.min(duration, t);
+    seekBoth(outPoint);
+    btnMarkOut.classList.add('active');
+    updateInOutRange();
+  };
+  const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+});
+
+inoutRange.addEventListener('mousedown', (e) => {
+  e.preventDefault();
+  const rect = inoutRange.parentElement.getBoundingClientRect();
+  const startX = e.clientX;
+  const startIn = inPoint ?? 0;
+  const startOut = outPoint ?? duration;
+  const onMove = (e) => {
+    const dx = e.clientX - startX;
+    const dt = (dx / rect.width) * duration;
+    let ni = startIn + dt;
+    let no = startOut + dt;
+    if (ni < 0) { no -= ni; ni = 0; }
+    if (no > duration) { ni -= (no - duration); no = duration; }
+    if (inPoint !== null) inPoint = Math.max(0, ni);
+    if (outPoint !== null) outPoint = Math.min(duration, no);
+    updateInOutRange();
+  };
+  const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+});
+
+const setInPoint = () => {
+  if (!duration) return;
+  inPoint = videoBase.currentTime;
+  if (outPoint !== null && inPoint >= outPoint) outPoint = null;
+  btnMarkIn.classList.add('active');
+  updateInOutRange();
+};
+
+const setOutPoint = () => {
+  if (!duration) return;
+  outPoint = videoBase.currentTime;
+  if (inPoint !== null && outPoint <= inPoint) inPoint = null;
+  btnMarkOut.classList.add('active');
+  updateInOutRange();
+};
+
+const clearInOut = () => {
+  inPoint = null;
+  outPoint = null;
+  btnMarkIn.classList.remove('active');
+  btnMarkOut.classList.remove('active');
+  updateInOutRange();
+};
+
+btnMarkIn.addEventListener('click', setInPoint);
+btnMarkOut.addEventListener('click', setOutPoint);
+btnClearInOut.addEventListener('click', clearInOut);
+
+window.addEventListener('keydown', (e) => {
+  if (e.target.isContentEditable || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === 'i' || e.key === 'I') setInPoint();
+  if (e.key === 'o' || e.key === 'O') setOutPoint();
+});
+
 const updateSliderFill = (input) => {
   const min = parseFloat(input.min) || 0;
   const max = parseFloat(input.max) || 1;
@@ -798,14 +934,35 @@ const checkHardwareAccel = async () => {
   }
 };
 
+renderCodec.addEventListener('change', checkHardwareAccel);
+updateFormatDisplay();
+
+const renderRangeSelect = document.getElementById('render-range');
+const renderFrameFrom = document.getElementById('render-frame-from');
+const renderFrameTo = document.getElementById('render-frame-to');
+const renderFrameFromLabel = document.getElementById('render-frame-from-label');
+const renderFrameToLabel = document.getElementById('render-frame-to-label');
+
+renderRangeSelect.addEventListener('change', () => {
+  const isCustom = renderRangeSelect.value === 'custom';
+  renderFrameFrom.style.display = isCustom ? '' : 'none';
+  renderFrameTo.style.display = isCustom ? '' : 'none';
+  renderFrameFromLabel.style.display = isCustom ? '' : 'none';
+  renderFrameToLabel.style.display = isCustom ? '' : 'none';
+  if (isCustom && duration) {
+    renderFrameFrom.value = 0;
+    renderFrameTo.value = Math.round(duration * 24);
+  }
+});
+
 btnRender.addEventListener('click', () => {
   renderSettingsModal.classList.add('active');
   hwStatus.style.color = '';
+  if (renderRangeSelect.value === 'inout') {
+    if (inPoint === null && outPoint === null) renderRangeSelect.value = 'all';
+  }
   checkHardwareAccel();
 });
-
-renderCodec.addEventListener('change', checkHardwareAccel);
-updateFormatDisplay();
 
 document.getElementById('btn-render-cancel').addEventListener('click', () => {
   renderSettingsModal.classList.remove('active');
@@ -826,9 +983,24 @@ const startRender = () => {
   const bitrateMap = { 2160: 40000000, 1080: 16000000, 720: 8000000, 480: 4000000 };
   const bitrate = bitrateMap[qualityHeight] || 8000000;
 
+  const fps = 24;
+  let renderStart = 0;
+  let renderEnd = duration;
+  const rangeMode = renderRangeSelect.value;
+  if (rangeMode === 'inout') {
+    renderStart = inPoint ?? 0;
+    renderEnd = outPoint ?? duration;
+  } else if (rangeMode === 'custom') {
+    renderStart = parseInt(renderFrameFrom.value) / fps;
+    renderEnd = parseInt(renderFrameTo.value) / fps;
+  }
+  renderStart = Math.max(0, Math.min(renderStart, duration));
+  renderEnd = Math.max(renderStart + 0.1, Math.min(renderEnd, duration));
+  const renderDuration = renderEnd - renderStart;
+
   if (isPlaying) togglePlayPause();
-  videoBase.currentTime = 0;
-  videoOverlay.currentTime = 0;
+  videoBase.currentTime = renderStart;
+  videoOverlay.currentTime = renderStart;
 
   const vbH = videoBase.videoHeight || 1080;
   const vbW = videoBase.videoWidth || 1920;
@@ -840,10 +1012,13 @@ const startRender = () => {
   const fw2 = Math.round(voW * scale2);
   const fw = fw1 + fw2;
   const fh = qualityHeight;
+  const showLabels = document.getElementById('render-show-labels').checked;
+  const labelBarH = showLabels ? Math.round(fh * 0.055) : 0;
+  const totalH = fh + labelBarH;
 
   const renderCanvas = document.createElement('canvas');
   renderCanvas.width = fw;
-  renderCanvas.height = fh;
+  renderCanvas.height = totalH;
   const ctx = renderCanvas.getContext('2d');
 
   const stream = renderCanvas.captureStream(30);
@@ -862,9 +1037,10 @@ const startRender = () => {
   renderProgress.style.width = '0%';
 
   const onRenderProgress = () => {
-    const pct = (videoBase.currentTime / duration) * 100;
+    const pct = Math.min(100, ((videoBase.currentTime - renderStart) / renderDuration) * 100);
     renderProgress.style.width = `${pct}%`;
     renderStatus.textContent = `Rendering: ${Math.floor(pct)}%`;
+    if (videoBase.currentTime >= renderEnd - 0.05) onRenderEnded();
   };
 
   const onRenderEnded = () => {
@@ -888,6 +1064,24 @@ const startRender = () => {
   videoBase.addEventListener('timeupdate', onRenderProgress);
   videoBase.addEventListener('ended', onRenderEnded);
 
+  const labelFont = showLabels ? `bold ${Math.round(labelBarH * 0.55)}px "Courier New", monospace` : '';
+  const label1 = track1Name.textContent.trim();
+  const label2 = track2Name.textContent.trim();
+
+  const drawLabelBar = () => {
+    if (!showLabels) return;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, fh, fw, labelBarH);
+    ctx.font = labelFont;
+    ctx.fillStyle = '#ffffff';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center';
+    ctx.fillText(label1, fw1 / 2, fh + labelBarH / 2);
+    ctx.fillText(label2, fw1 + fw2 / 2, fh + labelBarH / 2);
+    ctx.fillStyle = '#333';
+    ctx.fillRect(fw1, fh, 1, labelBarH);
+  };
+
   const drawFrame = () => {
     if (recorder.state !== 'recording') return;
     const drift = Math.abs(videoBase.currentTime - videoOverlay.currentTime);
@@ -896,6 +1090,7 @@ const startRender = () => {
     ctx.fillRect(0, 0, fw, fh);
     ctx.drawImage(videoBase, 0, 0, fw1, fh);
     ctx.drawImage(videoOverlay, fw1, 0, fw2, fh);
+    drawLabelBar();
     setTimeout(drawFrame, 0);
   };
 

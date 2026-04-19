@@ -93,6 +93,9 @@
             <option value="1.5">1.5x</option>
             <option value="2">2x</option>
           </select>
+          <button id="btn-mark-in" class="btn-transport btn-mark" title="Mark In (I)">I</button>
+          <button id="btn-mark-out" class="btn-transport btn-mark" title="Mark Out (O)">O</button>
+          <button id="btn-clear-inout" class="btn-transport btn-mark" title="Clear In/Out">&#10005;</button>
         </div>
         <div class="timecode right">
           <span id="duration-time">00:00:00:00</span>
@@ -101,6 +104,9 @@
       <div class="bottom-panel">
         <div class="timeline-container">
           <canvas id="time-ruler" class="time-ruler"></canvas>
+          <div id="inout-range" class="inout-range"></div>
+          <div id="inout-handle-in" class="inout-handle inout-handle-in"></div>
+          <div id="inout-handle-out" class="inout-handle inout-handle-out"></div>
           <div class="tracks-wrapper">
             <div class="track">
               <canvas class="waveform-canvas" id="canvas-waveform-1"></canvas>
@@ -121,7 +127,7 @@
               <div class="track-header-top">
                 <button id="btn-mute-1" class="btn-mute" title="Mute track 1">M</button>
                 <button id="btn-solo-1" class="btn-solo" title="Solo track 1">S</button>
-                <div class="track-name" id="track1-name">BigBuckBunny.mp4</div>
+                <div class="track-name" id="track1-name" contenteditable="true" spellcheck="false" title="Click para renombrar">BigBuckBunny.mp4</div>
               </div>
               <input type="range" class="fader-horizontal" id="vol-track1" min="0" max="1" step="0.001" value="1">
             </div>
@@ -132,7 +138,7 @@
               <div class="track-header-top">
                 <button id="btn-mute-2" class="btn-mute" title="Mute track 2">M</button>
                 <button id="btn-solo-2" class="btn-solo" title="Solo track 2">S</button>
-                <div class="track-name" id="track2-name">ElephantsDream.mp4</div>
+                <div class="track-name" id="track2-name" contenteditable="true" spellcheck="false" title="Click para renombrar">ElephantsDream.mp4</div>
               </div>
               <input type="range" class="fader-horizontal" id="vol-track2" min="0" max="1" step="0.001" value="1">
             </div>
@@ -164,6 +170,21 @@
         <span id="render-format-display" class="hw-status" style="font-size:10px;color:#888">detecting...</span>
       </div>
       <p id="render-hw-status" class="hw-status"></p>
+      <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#aaa;margin-top:6px;cursor:pointer">
+        <input type="checkbox" id="render-show-labels" checked style="accent-color:#8bf236"> Show video names
+      </label>
+      <div class="settings-grid" style="margin-top:8px">
+        <label>Range</label>
+        <select id="render-range">
+          <option value="all">Full video</option>
+          <option value="inout">In / Out points</option>
+          <option value="custom">Custom frames</option>
+        </select>
+        <label id="render-frame-from-label" style="display:none">From frame</label>
+        <input id="render-frame-from" type="number" min="0" value="0" style="display:none;background:#1a1a1a;border:1px solid #333;color:#ccc;padding:2px 4px;width:80px">
+        <label id="render-frame-to-label" style="display:none">To frame</label>
+        <input id="render-frame-to" type="number" min="0" value="0" style="display:none;background:#1a1a1a;border:1px solid #333;color:#ccc;padding:2px 4px;width:80px">
+      </div>
       <div class="modal-buttons">
         <button id="btn-render-cancel" class="btn-header">Cancel</button>
         <button id="btn-render-confirm" class="btn-header primary">Render</button>
