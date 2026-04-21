@@ -75,6 +75,7 @@ app.post('/api/render', upload.fields([{ name: 'video1', maxCount: 1 }, { name: 
   if (hasVaapi) {
     filter += `;[v_final]format=nv12,hwupload[v_hw]`;
     args = [
+      '-loglevel', 'debug',
       '-y',
       '-init_hw_device', 'vaapi=hw:/dev/dri/renderD128',
       '-filter_hw_device', 'hw',
