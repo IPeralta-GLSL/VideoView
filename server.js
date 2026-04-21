@@ -76,7 +76,8 @@ app.post('/api/render', upload.fields([{ name: 'video1', maxCount: 1 }, { name: 
     filter += `;[v_final]format=nv12,hwupload[v_hw]`;
     args = [
       '-y',
-      '-vaapi_device', '/dev/dri/renderD128',
+      '-init_hw_device', 'vaapi=hw:/dev/dri/renderD128',
+      '-filter_hw_device', 'hw',
       '-i', v1Path,
       '-i', v2Path,
       '-filter_complex', filter,
