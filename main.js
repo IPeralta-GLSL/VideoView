@@ -1041,8 +1041,10 @@ const startRender = async () => {
   formData.append('isLinux', navigator.platform.includes('Linux'));
   formData.append('totalDuration', duration);
 
+  const serverUrl = `http://${window.location.hostname}:3000`;
+
   try {
-    const response = await fetch('http://localhost:3000/api/render', {
+    const response = await fetch(`${serverUrl}/api/render`, {
       method: 'POST',
       body: formData
     });
@@ -1052,7 +1054,7 @@ const startRender = async () => {
     const { jobId } = await response.json();
 
     const poll = setInterval(async () => {
-      const res = await fetch(`http://localhost:3000/api/status/${jobId}`);
+      const res = await fetch(`${serverUrl}/api/status/${jobId}`);
       if (!res.ok) return;
       const data = await res.json();
 
@@ -1065,7 +1067,7 @@ const startRender = async () => {
         renderStatus.textContent = 'Downloading...';
         renderProgress.style.width = '100%';
         const a = document.createElement('a');
-        a.href = data.url;
+        a.href = `${serverUrl}${data.url}`;
         a.download = `render.mp4`;
         a.click();
         renderModal.classList.remove('active');

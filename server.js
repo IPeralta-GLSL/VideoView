@@ -103,7 +103,7 @@ app.post('/api/render', upload.fields([{ name: 'video1', maxCount: 1 }, { name: 
 
   ffmpeg.on('close', (code) => {
     if (code === 0) {
-      jobs.set(jobId, { status: 'done', url: `http://localhost:3000/api/download/${jobId}` });
+      jobs.set(jobId, { status: 'done', url: `/api/download/${jobId}` });
     } else {
       jobs.set(jobId, { status: 'error' });
     }
