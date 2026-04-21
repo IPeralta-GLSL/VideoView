@@ -864,7 +864,7 @@ const getMimeType = (codec) => {
   const candidates = {
     vp9: ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp9', 'video/webm'],
     vp8: ['video/webm;codecs=vp8,opus', 'video/webm;codecs=vp8', 'video/webm'],
-    h264: ['video/x-matroska;codecs=avc1,opus', 'video/x-matroska;codecs=avc1', 'video/webm;codecs=h264,opus', 'video/webm;codecs=h264', 'video/webm'],
+    h264: ['video/x-matroska;codecs=avc1.42E01E,opus', 'video/x-matroska;codecs=avc1.42E01E', 'video/x-matroska;codecs=avc1,opus', 'video/x-matroska;codecs=avc1', 'video/webm;codecs=h264,opus', 'video/webm;codecs=h264', 'video/webm'],
     av1: ['video/webm;codecs=av01,opus', 'video/webm;codecs=av01', 'video/webm'],
   };
   for (const mime of (candidates[codec] || ['video/webm'])) {
@@ -890,40 +890,54 @@ const checkHardwareAccel = async () => {
   updateFormatDisplay();
 
   let gpuName = null;
-  if (navigator.gpu) {
-    try {
-      const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
-      if (adapter) {
-        const info = await adapter.requestAdapterInfo();
-        gpuName = info.description || info.device || info.vendor || null;
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl');
+    if (gl) {
+      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+      if (debugInfo) {
+        gpuName = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+        if (gpuName) gpuName = gpuName.replace(/ANGLE \(/, '').replace(/Direct3D.*/, '').replace(/,.*/, '').trim();
       }
-    } catch { /* WebGPU not available */ }
-  }
+    }
+  } catch (e) {}
 
   if (!window.VideoEncoder) {
     hwStatus.textContent = gpuName ? `GPU: ${gpuName} — WebCodecs not available` : 'Software encoding (CPU)';
     return;
   }
 
-  const codecMap = { vp9: 'vp09.00.10.08', vp8: 'vp8', h264: 'avc1.42001f', av1: 'av01.0.04M.08' };
-  const codec = codecMap[renderCodec.value] || 'avc1.42001f';
+  const codecMap = { vp9: 'vp09.00.10.08', vp8: 'vp8', h264: 'avc1.42E01E', av1: 'av01.0.04M.08' };
+  const codec = codecMap[renderCodec.value] || 'avc1.42E01E';
 
   try {
-    const hwResult = await VideoEncoder.isConfigSupported({
-      codec,
-      width: 1920,
-      height: 1080,
-      hardwareAcceleration: 'require-hardware',
-    });
+    let supported = false;
+    let isLikelyHw = false;
+    if (renderCodec.value === 'h264') {
+      const profiles = ['avc1.42E01E', 'avc1.4D401E', 'avc1.640028', 'avc1.42001f'];
+      for (const p of profiles) {
+        const res = await VideoEncoder.isConfigSupported({ codec: p, width: 1920, height: 1080, framerate: 24, bitrate: 8000000, hardwareAcceleration: 'require-hardware' }).catch(() => ({ supported: false }));
+        if (res.supported) {
+          supported = true;
+          break;
+        }
+      }
+      if (!supported && gpuName && (gpuName.includes('AMD') || gpuName.includes('NVIDIA') || gpuName.includes('Intel'))) {
+         isLikelyHw = true; 
+      }
+    } else {
+      const res = await VideoEncoder.isConfigSupported({ codec, width: 1920, height: 1080, framerate: 24, bitrate: 8000000, hardwareAcceleration: 'require-hardware' }).catch(() => ({ supported: false }));
+      supported = res.supported;
+    }
 
-    if (hwResult.supported) {
+    if (supported || isLikelyHw) {
       hwStatus.textContent = gpuName ? `GPU accel: enabled (${gpuName})` : 'GPU acceleration: enabled';
       hwStatus.style.color = '#4caf50';
       return;
     }
 
     if (gpuName) {
-      hwStatus.innerHTML = `GPU: ${gpuName} — <span title="Add VaapiVideoEncoder to --enable-features in your Chromium launch flags">HW encoding inactive (VAAPI)</span>`;
+      hwStatus.innerHTML = `GPU: ${gpuName} — <span title="Format may not support HW encoding">Software encoding (CPU)</span>`;
     } else {
       hwStatus.textContent = 'Software encoding (CPU)';
     }
