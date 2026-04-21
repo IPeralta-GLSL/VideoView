@@ -1091,7 +1091,7 @@ const startRender = () => {
     ctx.drawImage(videoBase, 0, 0, fw1, fh);
     ctx.drawImage(videoOverlay, fw1, 0, fw2, fh);
     drawLabelBar();
-    setTimeout(drawFrame, 0);
+    requestAnimationFrame(drawFrame);
   };
 
   recorder.start();
