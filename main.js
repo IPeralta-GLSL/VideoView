@@ -240,6 +240,7 @@ masterFader.addEventListener('input', () => {
 const pauseVideos = () => {
   videoBase.pause();
   videoOverlay.pause();
+  videoOverlay.currentTime = videoBase.currentTime;
 };
 
 const seekBoth = (t) => {
@@ -247,46 +248,32 @@ const seekBoth = (t) => {
   videoOverlay.currentTime = t;
 };
 
-let syncRafId = null;
-
-let lastSyncTime = 0;
-const syncLoop = (now) => {
-  if (!isPlaying) return;
+const syncLoop = () => {
   
-  if (now - lastSyncTime > 250) {
-    const baseTime = videoBase.currentTime;
-    const overlayTime = videoOverlay.currentTime;
-    const drift = baseTime - overlayTime;
-    
-    if (Math.abs(drift) > 0.15) {
-      // Desfase mayor a 150ms: forzar salto de tiempo
-      videoOverlay.currentTime = baseTime;
-      videoOverlay.playbackRate = videoBase.playbackRate;
-    } else if (Math.abs(drift) > 0.015) {
-      // Desfase leve: ajuste mínimo de velocidad sin oscilaciones salvajes
-      videoOverlay.playbackRate = videoBase.playbackRate + (drift > 0 ? 0.04 : -0.04);
-    } else {
-      // Sincronizado
-      if (videoOverlay.playbackRate !== videoBase.playbackRate) {
-        videoOverlay.playbackRate = videoBase.playbackRate;
-      }
-    }
-    lastSyncTime = now;
+  const baseTime = videoBase.currentTime;
+  const overlayTime = videoOverlay.currentTime;
+  const drift = baseTime - overlayTime;
+  
+  // Verificador estricto en tiempo real (60 veces por segundo).
+  // Si el video 2 se atrasa o adelanta más de 1 fotograma (~0.04s), 
+  // lo obligamos a saltar exactamente al mismo tiempo que el Video 1.
+  if (Math.abs(drift) > 0.04) {
+    videoOverlay.currentTime = baseTime;
   }
-
-  syncRafId = requestAnimationFrame(syncLoop);
+  
+  requestAnimationFrame(syncLoop);
 };
 
 const playVideos = () => {
-  const t = videoBase.currentTime;
-  videoOverlay.currentTime = t;
+  videoOverlay.currentTime = videoBase.currentTime;
   Promise.all([
     videoBase.play(),
     videoOverlay.play()
   ]).catch(() => {});
-  if (syncRafId) cancelAnimationFrame(syncRafId);
-  syncRafId = requestAnimationFrame(syncLoop);
 };
+
+// Arrancar el verificador continuo e infinito
+syncLoop();
 
 let wipeX = 0;
 let wipeY = 0;
@@ -452,18 +439,13 @@ videoBase.addEventListener('timeupdate', () => {
 });
 
 videoBase.addEventListener('seeked', () => {
-  if (Math.abs(videoBase.currentTime - videoOverlay.currentTime) > 0.001) {
-    videoOverlay.currentTime = videoBase.currentTime + 0.001;
-  }
+  // El verificador continuo ya se encarga de corregir los desfasajes.
 });
 
 videoBase.addEventListener('pause', () => {
-  // Añadimos +0.001 segundos (1 milisegundo) para forzar al decodificador
-  // del Video 2 a pasar el límite del fotograma en caso de problemas de redondeo
-  // de punto flotante en el motor del navegador, garantizando que muestre la misma imagen.
-  requestAnimationFrame(() => {
-    videoOverlay.currentTime = videoBase.currentTime + 0.001;
-  });
+  // Ejecutamos el fix de forma síncrona en el microsegundo exacto de la pausa
+  // para evitar la espera de 16ms del requestAnimationFrame.
+  videoOverlay.currentTime = videoBase.currentTime;
 });
 
 videoBase.addEventListener('ended', () => {
@@ -494,7 +476,6 @@ const togglePlayPause = () => {
   initAudio();
   if (isPlaying) {
     pauseVideos();
-    if (syncRafId) { cancelAnimationFrame(syncRafId); syncRafId = null; }
     videoOverlay.playbackRate = videoBase.playbackRate;
     iconPlay.style.display = 'block';
     iconPause.style.display = 'none';
