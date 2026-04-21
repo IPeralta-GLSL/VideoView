@@ -249,13 +249,19 @@ const seekBoth = (t) => {
 };
 
 const syncLoop = () => {
-
   const baseTime = videoBase.currentTime;
   const overlayTime = videoOverlay.currentTime;
   const drift = baseTime - overlayTime;
 
-  if (Math.abs(drift) > 0.04) {
-    videoOverlay.currentTime = baseTime;
+  if (!isPlaying) {
+
+    if (Math.abs(drift) > 0.001) {
+      videoOverlay.currentTime = baseTime;
+    }
+  } else {
+    if (Math.abs(drift) > 0.04) {
+      videoOverlay.currentTime = baseTime;
+    }
   }
 
   requestAnimationFrame(syncLoop);
