@@ -249,18 +249,15 @@ const seekBoth = (t) => {
 };
 
 const syncLoop = () => {
-  
+
   const baseTime = videoBase.currentTime;
   const overlayTime = videoOverlay.currentTime;
   const drift = baseTime - overlayTime;
-  
-  // Verificador estricto en tiempo real (60 veces por segundo).
-  // Si el video 2 se atrasa o adelanta más de 1 fotograma (~0.04s), 
-  // lo obligamos a saltar exactamente al mismo tiempo que el Video 1.
+
   if (Math.abs(drift) > 0.04) {
     videoOverlay.currentTime = baseTime;
   }
-  
+
   requestAnimationFrame(syncLoop);
 };
 
@@ -269,10 +266,10 @@ const playVideos = () => {
   Promise.all([
     videoBase.play(),
     videoOverlay.play()
-  ]).catch(() => {});
+  ]).catch(() => { });
 };
 
-// Arrancar el verificador continuo e infinito
+
 syncLoop();
 
 let wipeX = 0;
@@ -787,10 +784,10 @@ const drawStaticWaveform = async (url, canvas, trackIndex) => {
     if (!response.ok) throw new Error(`HTTP ${response.status} - ${response.statusText}`);
     const arrayBuffer = await response.arrayBuffer();
     const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-    
+
     if (trackIndex === 1) buffer1 = audioBuffer;
     if (trackIndex === 2) buffer2 = audioBuffer;
-    
+
     const channelData = audioBuffer.getChannelData(0);
     const step = Math.ceil(channelData.length / canvas.width);
     const amp = canvas.height / 2;
@@ -917,7 +914,7 @@ const checkHardwareAccel = async () => {
         if (gpuName) gpuName = gpuName.replace(/ANGLE \(/, '').replace(/Direct3D.*/, '').replace(/,.*/, '').trim();
       }
     }
-  } catch (e) {}
+  } catch (e) { }
 
   if (!window.VideoEncoder) {
     hwStatus.textContent = gpuName ? `GPU: ${gpuName} — WebCodecs not available` : 'Software encoding (CPU)';
@@ -940,7 +937,7 @@ const checkHardwareAccel = async () => {
         }
       }
       if (!supported && gpuName && (gpuName.includes('AMD') || gpuName.includes('NVIDIA') || gpuName.includes('Intel'))) {
-         isLikelyHw = true; 
+        isLikelyHw = true;
       }
     } else {
       const res = await VideoEncoder.isConfigSupported({ codec, width: 1920, height: 1080, framerate: 24, bitrate: 8000000, hardwareAcceleration: 'require-hardware' }).catch(() => ({ supported: false }));
@@ -1010,7 +1007,7 @@ const startRender = async () => {
     alert("Carga ambos videos primero arrastrándolos a la interfaz.");
     return;
   }
-  
+
   const qualityHeight = parseInt(renderQuality.value);
   const showLabels = document.getElementById('render-show-labels').checked;
   const label1 = track1Name.textContent.trim();
@@ -1043,16 +1040,16 @@ const startRender = async () => {
       method: 'POST',
       body: formData
     });
-    
+
     if (!response.ok) throw new Error('Render failed on server');
-    
+
     const { jobId } = await response.json();
-    
+
     const poll = setInterval(async () => {
       const res = await fetch(`http://localhost:3000/api/status/${jobId}`);
       if (!res.ok) return;
       const data = await res.json();
-      
+
       if (data.status === 'rendering') {
         const pct = Math.min(100, (data.progress / duration) * 100);
         renderStatus.textContent = `Rendering on server: ${Math.floor(pct)}%`;
