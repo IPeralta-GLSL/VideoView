@@ -42,8 +42,8 @@ app.post('/api/render', upload.fields([{ name: 'video1', maxCount: 1 }, { name: 
   const labelH = showLabels === 'true' ? Math.round(qH * 0.055) : 0;
   const totalH = qH + labelH;
 
-  // For Windows, avoid 'C:' because colons break the FFmpeg parser. Use absolute path from root.
-  const fontFile = isLinux === 'true' ? '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf' : '/Windows/Fonts/arialbd.ttf';
+  const isLinuxServer = process.platform === 'linux';
+  const fontFile = isLinuxServer ? '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf' : '/Windows/Fonts/arialbd.ttf';
   const v1Vol = parseFloat(vol1) || 1.0;
   const v2Vol = parseFloat(vol2) || 1.0;
   const mVol = parseFloat(masterVol) || 1.0;
@@ -53,15 +53,15 @@ app.post('/api/render', upload.fields([{ name: 'video1', maxCount: 1 }, { name: 
   
   if (showLabels === 'true') {
     filter += `[v_stack]pad=width=${totalW}:height=${totalH}:x=0:y=0:color=black[padded];`;
-    filter += `[padded]drawtext=fontfile='${fontFile}':text='${label1}':x=${Math.round(fw1/2)}:y=${qH + Math.round(labelH/2)}:fontcolor=white:fontsize=${Math.round(labelH*0.55)}:text_align=M+C,`;
-    filter += `drawtext=fontfile='${fontFile}':text='${label2}':x=${fw1 + Math.round(fw2/2)}:y=${qH + Math.round(labelH/2)}:fontcolor=white:fontsize=${Math.round(labelH*0.55)}:text_align=M+C[v_final];`;
+    filter += `[padded]drawtext=fontfile='${fontFile}':text='${label1}':x=(${fw1}-tw)/2:y=${qH}+(${labelH}-th)/2:fontcolor=white:fontsize=${Math.round(labelH*0.55)},`;
+    filter += `drawtext=fontfile='${fontFile}':text='${label2}':x=${fw1}+(${fw2}-tw)/2:y=${qH}+(${labelH}-th)/2:fontcolor=white:fontsize=${Math.round(labelH*0.55)}[v_final];`;
   } else {
     filter += `[v_stack]copy[v_final];`;
   }
 
   filter += `[0:a]volume=${v1Vol}[a0];[1:a]volume=${v2Vol}[a1];[a0][a1]amix=inputs=2:duration=longest[amixed];[amixed]volume=${mVol}[a_final]`;
 
-  const vCodec = isLinux === 'true' ? 'libx264' : 'h264_amf';
+  const vCodec = isLinuxServer ? 'libx264' : 'h264_amf';
 
   const args = [
     '-y',

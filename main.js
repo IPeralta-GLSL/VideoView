@@ -254,10 +254,7 @@ const syncLoop = () => {
   const drift = baseTime - overlayTime;
 
   if (!isPlaying) {
-
-    if (Math.abs(drift) > 0.001) {
-      videoOverlay.currentTime = baseTime;
-    }
+    videoOverlay.currentTime = baseTime;
   } else {
     if (Math.abs(drift) > 0.04) {
       videoOverlay.currentTime = baseTime;
@@ -441,13 +438,9 @@ videoBase.addEventListener('timeupdate', () => {
   }
 });
 
-videoBase.addEventListener('seeked', () => {
-  // El verificador continuo ya se encarga de corregir los desfasajes.
-});
+videoBase.addEventListener('seeked', () => {});
 
 videoBase.addEventListener('pause', () => {
-  // Ejecutamos el fix de forma síncrona en el microsegundo exacto de la pausa
-  // para evitar la espera de 16ms del requestAnimationFrame.
   videoOverlay.currentTime = videoBase.currentTime;
 });
 
