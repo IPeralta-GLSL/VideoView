@@ -42,7 +42,7 @@ app.post('/api/render', upload.fields([{ name: 'video1', maxCount: 1 }, { name: 
   const labelH = showLabels === 'true' ? Math.round(qH * 0.055) : 0;
   const totalH = qH + labelH;
 
-  // Para Windows, evitamos 'C:' porque los dos puntos rompen el parser de FFmpeg. Usamos la ruta absoluta desde la raíz.
+  // For Windows, avoid 'C:' because colons break the FFmpeg parser. Use absolute path from root.
   const fontFile = isLinux === 'true' ? '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf' : '/Windows/Fonts/arialbd.ttf';
   const v1Vol = parseFloat(vol1) || 1.0;
   const v2Vol = parseFloat(vol2) || 1.0;
@@ -84,7 +84,7 @@ app.post('/api/render', upload.fields([{ name: 'video1', maxCount: 1 }, { name: 
 
   ffmpeg.on('error', (err) => {
     console.error('\n[FFmpeg Spawn Error]', err.message);
-    console.error('VERIFICA QUE FFMPEG ESTA INSTALADO Y EN EL PATH DE WINDOWS!\n');
+    console.error('VERIFY THAT FFMPEG IS INSTALLED AND IN THE SYSTEM PATH!\n');
     jobs.set(jobId, { status: 'error' });
   });
 
