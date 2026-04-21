@@ -61,21 +61,38 @@ app.post('/api/render', upload.fields([{ name: 'video1', maxCount: 1 }, { name: 
 
   filter += `[0:a]volume=${v1Vol}[a0];[1:a]volume=${v2Vol}[a1];[a0][a1]amix=inputs=2:duration=longest[amixed];[amixed]volume=${mVol}[a_final]`;
 
-  const vCodec = isLinuxServer ? 'libx264' : 'h264_amf';
-
-  const args = [
-    '-y',
-    '-hwaccel', 'auto',
-    '-i', v1Path,
-    '-i', v2Path,
-    '-filter_complex', filter,
-    '-map', '[v_final]',
-    '-map', '[a_final]',
-    '-c:v', vCodec,
-    '-b:v', '16M',
-    '-c:a', 'aac',
-    outPath
-  ];
+  let args = [];
+  
+  if (isLinuxServer) {
+    filter += `;[v_final]format=nv12,hwupload[v_hw]`;
+    args = [
+      '-y',
+      '-vaapi_device', '/dev/dri/renderD128',
+      '-i', v1Path,
+      '-i', v2Path,
+      '-filter_complex', filter,
+      '-map', '[v_hw]',
+      '-map', '[a_final]',
+      '-c:v', 'h264_vaapi',
+      '-b:v', '16M',
+      '-c:a', 'aac',
+      outPath
+    ];
+  } else {
+    args = [
+      '-y',
+      '-hwaccel', 'auto',
+      '-i', v1Path,
+      '-i', v2Path,
+      '-filter_complex', filter,
+      '-map', '[v_final]',
+      '-map', '[a_final]',
+      '-c:v', 'h264_amf',
+      '-b:v', '16M',
+      '-c:a', 'aac',
+      outPath
+    ];
+  }
 
   jobs.set(jobId, { status: 'rendering', progress: 0, totalDuration: dur });
   res.json({ jobId });
