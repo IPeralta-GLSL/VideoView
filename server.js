@@ -35,14 +35,32 @@ app.post('/api/render', upload.fields([{ name: 'video1', maxCount: 1 }, { name: 
   const outPath = path.join(tempDir, `${jobId}-out.mp4`);
 
   const { qualityHeight, vol1, vol2, masterVol, showLabels, label1, label2, isLinux, totalDuration } = req.body;
-  const qH = parseInt(qualityHeight) || 1080;
-  const fw1 = Math.round(qH * (1920/1080));
-  const fw2 = Math.round(qH * (1920/1080));
-  const totalW = fw1 + fw2;
-  const labelH = showLabels === 'true' ? Math.round(qH * 0.055) : 0;
-  const totalH = qH + labelH;
 
   const isLinuxServer = process.platform === 'linux';
+  let hasVaapi = false;
+  if (isLinuxServer) {
+    try {
+      fs.accessSync('/dev/dri/renderD128', fs.constants.R_OK | fs.constants.W_OK);
+      hasVaapi = true;
+    } catch (e) { }
+  }
+
+  let qH = parseInt(qualityHeight) || 1080;
+  if (hasVaapi) {
+    // Hardware limitation on older AMD APUs (Kabini): max encoding width is 1920.
+    // Since we stack 2 videos horizontally, each video can be max 960 pixels wide.
+    // Assuming 16:9, 960 width = 540 height.
+    qH = Math.min(qH, 540);
+  }
+
+  // Enforce even dimensions for nv12 compatibility
+  qH = qH & ~1;
+  const fw1 = Math.round(qH * (1920/1080)) & ~1;
+  const fw2 = Math.round(qH * (1920/1080)) & ~1;
+  const totalW = fw1 + fw2;
+  const labelH = showLabels === 'true' ? Math.round(qH * 0.055) & ~1 : 0;
+  const totalH = qH + labelH;
+
   const fontFile = isLinuxServer ? '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf' : '/Windows/Fonts/arialbd.ttf';
   const v1Vol = parseFloat(vol1) || 1.0;
   const v2Vol = parseFloat(vol2) || 1.0;
@@ -62,20 +80,10 @@ app.post('/api/render', upload.fields([{ name: 'video1', maxCount: 1 }, { name: 
   filter += `[0:a]volume=${v1Vol}[a0];[1:a]volume=${v2Vol}[a1];[a0][a1]amix=inputs=2:duration=longest[amixed];[amixed]volume=${mVol}[a_final]`;
 
   let args = [];
-  let hasVaapi = false;
-  if (isLinuxServer) {
-    try {
-      fs.accessSync('/dev/dri/renderD128', fs.constants.R_OK | fs.constants.W_OK);
-      hasVaapi = true;
-    } catch (e) {
-      console.log('[Info] /dev/dri/renderD128 is missing or inaccessible. Falling back to CPU.');
-    }
-  }
   
   if (hasVaapi) {
     filter += `;[v_final]format=nv12,hwupload[v_hw]`;
     args = [
-      '-loglevel', 'debug',
       '-y',
       '-init_hw_device', 'vaapi=hw:/dev/dri/renderD128',
       '-filter_hw_device', 'hw',
@@ -85,21 +93,22 @@ app.post('/api/render', upload.fields([{ name: 'video1', maxCount: 1 }, { name: 
       '-map', '[v_hw]',
       '-map', '[a_final]',
       '-c:v', 'h264_vaapi',
-      '-b:v', '16M',
+      '-b:v', '8M',
       '-c:a', 'aac',
       outPath
     ];
   } else if (isLinuxServer) {
+    filter += `;[v_final]copy[v_out]`;
     args = [
       '-y',
       '-i', v1Path,
       '-i', v2Path,
       '-filter_complex', filter,
-      '-map', '[v_final]',
+      '-map', '[v_out]',
       '-map', '[a_final]',
       '-c:v', 'libx264',
       '-preset', 'fast',
-      '-b:v', '16M',
+      '-b:v', '8M',
       '-c:a', 'aac',
       outPath
     ];
