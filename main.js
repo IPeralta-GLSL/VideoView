@@ -249,16 +249,31 @@ const seekBoth = (t) => {
 
 let syncRafId = null;
 
-const syncLoop = () => {
+let lastSyncTime = 0;
+const syncLoop = (now) => {
   if (!isPlaying) return;
-  const drift = videoBase.currentTime - videoOverlay.currentTime;
-  if (Math.abs(drift) > 0.05) {
-    videoOverlay.currentTime = videoBase.currentTime;
-  } else if (Math.abs(drift) > 0.01) {
-    videoOverlay.playbackRate = videoBase.playbackRate * (1 + drift * 2);
-  } else {
-    videoOverlay.playbackRate = videoBase.playbackRate;
+  
+  if (now - lastSyncTime > 250) {
+    const baseTime = videoBase.currentTime;
+    const overlayTime = videoOverlay.currentTime;
+    const drift = baseTime - overlayTime;
+    
+    if (Math.abs(drift) > 0.15) {
+      // Desfase mayor a 150ms: forzar salto de tiempo
+      videoOverlay.currentTime = baseTime;
+      videoOverlay.playbackRate = videoBase.playbackRate;
+    } else if (Math.abs(drift) > 0.015) {
+      // Desfase leve: ajuste mínimo de velocidad sin oscilaciones salvajes
+      videoOverlay.playbackRate = videoBase.playbackRate + (drift > 0 ? 0.04 : -0.04);
+    } else {
+      // Sincronizado
+      if (videoOverlay.playbackRate !== videoBase.playbackRate) {
+        videoOverlay.playbackRate = videoBase.playbackRate;
+      }
+    }
+    lastSyncTime = now;
   }
+
   syncRafId = requestAnimationFrame(syncLoop);
 };
 
@@ -437,9 +452,18 @@ videoBase.addEventListener('timeupdate', () => {
 });
 
 videoBase.addEventListener('seeked', () => {
-  if (Math.abs(videoBase.currentTime - videoOverlay.currentTime) > 0.01) {
-    videoOverlay.currentTime = videoBase.currentTime;
+  if (Math.abs(videoBase.currentTime - videoOverlay.currentTime) > 0.001) {
+    videoOverlay.currentTime = videoBase.currentTime + 0.001;
   }
+});
+
+videoBase.addEventListener('pause', () => {
+  // Añadimos +0.001 segundos (1 milisegundo) para forzar al decodificador
+  // del Video 2 a pasar el límite del fotograma en caso de problemas de redondeo
+  // de punto flotante en el motor del navegador, garantizando que muestre la misma imagen.
+  requestAnimationFrame(() => {
+    videoOverlay.currentTime = videoBase.currentTime + 0.001;
+  });
 });
 
 videoBase.addEventListener('ended', () => {
@@ -770,7 +794,7 @@ window.addEventListener('drop', (e) => {
   dropRight.classList.remove('drag-over');
 });
 
-const drawStaticWaveform = async (url, canvas) => {
+const drawStaticWaveform = async (url, canvas, trackIndex) => {
   const ctx = canvas.getContext('2d');
   const parent = canvas.parentElement;
   canvas.width = parent.clientWidth;
@@ -779,10 +803,13 @@ const drawStaticWaveform = async (url, canvas) => {
 
   try {
     const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP ${response.status} - ${response.statusText}`);
     const arrayBuffer = await response.arrayBuffer();
     const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-    if (canvas.id === 'canvas-waveform-1') buffer1 = audioBuffer;
-    if (canvas.id === 'canvas-waveform-2') buffer2 = audioBuffer;
+    
+    if (trackIndex === 1) buffer1 = audioBuffer;
+    if (trackIndex === 2) buffer2 = audioBuffer;
+    
     const channelData = audioBuffer.getChannelData(0);
     const step = Math.ceil(channelData.length / canvas.width);
     const amp = canvas.height / 2;
@@ -800,6 +827,7 @@ const drawStaticWaveform = async (url, canvas) => {
       ctx.fillRect(i, (1 + min) * amp, 1, Math.max(1, (max - min) * amp));
     }
   } catch (error) {
+    console.error('Waveform Error for track', trackIndex, ':', error);
     ctx.fillStyle = '#262626';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#555';
