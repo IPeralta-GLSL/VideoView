@@ -1,3 +1,7 @@
+let uploadedFileBase = null;
+let uploadedFileOverlay = null;
+let globalDetectedCodec = 'avc1.42E01E';
+
 const slider = document.getElementById('comparison-slider');
 const overlayContainer = document.getElementById('video-overlay-container');
 const sliderHandle = document.getElementById('slider-handle');
@@ -777,6 +781,8 @@ const drawStaticWaveform = async (url, canvas) => {
     const response = await fetch(url);
     const arrayBuffer = await response.arrayBuffer();
     const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    if (canvas.id === 'canvas-waveform-1') buffer1 = audioBuffer;
+    if (canvas.id === 'canvas-waveform-2') buffer2 = audioBuffer;
     const channelData = audioBuffer.getChannelData(0);
     const step = Math.ceil(channelData.length / canvas.width);
     const amp = canvas.height / 2;
@@ -804,15 +810,17 @@ const drawStaticWaveform = async (url, canvas) => {
   }
 };
 
-const handleDrop = (e, videoElement, canvas, nameElement) => {
+const handleDrop = (e, videoElement, canvas, nameElement, isBase) => {
   e.preventDefault();
   const file = e.dataTransfer.files[0];
   if (file && file.type.startsWith('video/')) {
+    if (isBase) uploadedFileBase = file;
+    else uploadedFileOverlay = file;
     const url = URL.createObjectURL(file);
     videoElement.src = url;
     videoElement.load();
     nameElement.textContent = file.name;
-    drawStaticWaveform(url, canvas);
+    drawStaticWaveform(url, canvas, isBase ? 1 : 2);
     setTimeout(updateBufferBars, 300);
     if (isPlaying) togglePlayPause();
   }
@@ -820,11 +828,11 @@ const handleDrop = (e, videoElement, canvas, nameElement) => {
 
 dropLeft.addEventListener('dragenter', () => dropLeft.classList.add('drag-over'));
 dropLeft.addEventListener('dragleave', () => dropLeft.classList.remove('drag-over'));
-dropLeft.addEventListener('drop', (e) => handleDrop(e, videoOverlay, canvasWave2, track2Name));
+dropLeft.addEventListener('drop', (e) => handleDrop(e, videoOverlay, canvasWave2, track2Name, false));
 
 dropRight.addEventListener('dragenter', () => dropRight.classList.add('drag-over'));
 dropRight.addEventListener('dragleave', () => dropRight.classList.remove('drag-over'));
-dropRight.addEventListener('drop', (e) => handleDrop(e, videoBase, canvasWave1, track1Name));
+dropRight.addEventListener('drop', (e) => handleDrop(e, videoBase, canvasWave1, track1Name, true));
 
 window.addEventListener('load', () => {
   drawStaticWaveform(videoBase.querySelector('source').src, canvasWave1);
@@ -933,6 +941,7 @@ const checkHardwareAccel = async () => {
     if (supported || isLikelyHw) {
       hwStatus.textContent = gpuName ? `GPU accel: enabled (${gpuName})` : 'GPU acceleration: enabled';
       hwStatus.style.color = '#4caf50';
+      globalDetectedCodec = renderCodec.value === 'h264' ? codec : codec;
       return;
     }
 
@@ -987,130 +996,73 @@ document.getElementById('btn-render-confirm').addEventListener('click', () => {
   startRender();
 });
 
-const startRender = () => {
-  if (!audioInitialized) initAudio();
-
-  const qualityHeight = parseInt(renderQuality.value);
-  const codec = renderCodec.value;
-  const mimeType = getMimeType(codec);
-  const ext = getExt(mimeType);
-  const bitrateMap = { 2160: 40000000, 1080: 16000000, 720: 8000000, 480: 4000000 };
-  const bitrate = bitrateMap[qualityHeight] || 8000000;
-
-  const fps = 24;
-  let renderStart = 0;
-  let renderEnd = duration;
-  const rangeMode = renderRangeSelect.value;
-  if (rangeMode === 'inout') {
-    renderStart = inPoint ?? 0;
-    renderEnd = outPoint ?? duration;
-  } else if (rangeMode === 'custom') {
-    renderStart = parseInt(renderFrameFrom.value) / fps;
-    renderEnd = parseInt(renderFrameTo.value) / fps;
+const startRender = async () => {
+  if (!uploadedFileBase || !uploadedFileOverlay) {
+    alert("Carga ambos videos primero arrastrándolos a la interfaz.");
+    return;
   }
-  renderStart = Math.max(0, Math.min(renderStart, duration));
-  renderEnd = Math.max(renderStart + 0.1, Math.min(renderEnd, duration));
-  const renderDuration = renderEnd - renderStart;
-
-  if (isPlaying) togglePlayPause();
-  videoBase.currentTime = renderStart;
-  videoOverlay.currentTime = renderStart;
-
-  const vbH = videoBase.videoHeight || 1080;
-  const vbW = videoBase.videoWidth || 1920;
-  const voH = videoOverlay.videoHeight || 1080;
-  const voW = videoOverlay.videoWidth || 1920;
-  const scale1 = qualityHeight / vbH;
-  const scale2 = qualityHeight / voH;
-  const fw1 = Math.round(vbW * scale1);
-  const fw2 = Math.round(voW * scale2);
-  const fw = fw1 + fw2;
-  const fh = qualityHeight;
+  
+  const qualityHeight = parseInt(renderQuality.value);
   const showLabels = document.getElementById('render-show-labels').checked;
-  const labelBarH = showLabels ? Math.round(fh * 0.055) : 0;
-  const totalH = fh + labelBarH;
-
-  const renderCanvas = document.createElement('canvas');
-  renderCanvas.width = fw;
-  renderCanvas.height = totalH;
-  const ctx = renderCanvas.getContext('2d');
-
-  const stream = renderCanvas.captureStream(30);
-  const audioDest = audioCtx.createMediaStreamDestination();
-  masterAnalyser.disconnect(audioCtx.destination);
-  masterGainNode.connect(audioDest);
-  audioDest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
-
-  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: bitrate });
-  const chunks = [];
-
-  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-
-  renderModal.classList.add('active');
-  renderStatus.textContent = 'Preparing...';
-  renderProgress.style.width = '0%';
-
-  const onRenderProgress = () => {
-    const pct = Math.min(100, ((videoBase.currentTime - renderStart) / renderDuration) * 100);
-    renderProgress.style.width = `${pct}%`;
-    renderStatus.textContent = `Rendering: ${Math.floor(pct)}%`;
-    if (videoBase.currentTime >= renderEnd - 0.05) onRenderEnded();
-  };
-
-  const onRenderEnded = () => {
-    if (recorder.state === 'recording') recorder.stop();
-  };
-
-  recorder.onstop = () => {
-    const blob = new Blob(chunks, { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `render.${ext}`;
-    a.click();
-    renderModal.classList.remove('active');
-    masterGainNode.disconnect(audioDest);
-    masterAnalyser.connect(audioCtx.destination);
-    videoBase.removeEventListener('timeupdate', onRenderProgress);
-    videoBase.removeEventListener('ended', onRenderEnded);
-  };
-
-  videoBase.addEventListener('timeupdate', onRenderProgress);
-  videoBase.addEventListener('ended', onRenderEnded);
-
-  const labelFont = showLabels ? `bold ${Math.round(labelBarH * 0.55)}px "Courier New", monospace` : '';
   const label1 = track1Name.textContent.trim();
   const label2 = track2Name.textContent.trim();
 
-  const drawLabelBar = () => {
-    if (!showLabels) return;
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, fh, fw, labelBarH);
-    ctx.font = labelFont;
-    ctx.fillStyle = '#ffffff';
-    ctx.textBaseline = 'middle';
-    ctx.textAlign = 'center';
-    ctx.fillText(label1, fw1 / 2, fh + labelBarH / 2);
-    ctx.fillText(label2, fw1 + fw2 / 2, fh + labelBarH / 2);
-    ctx.fillStyle = '#333';
-    ctx.fillRect(fw1, fh, 1, labelBarH);
-  };
+  renderModal.classList.add('active');
+  renderStatus.textContent = 'Uploading videos...';
+  renderProgress.style.width = '0%';
 
-  const drawFrame = () => {
-    if (recorder.state !== 'recording') return;
-    const drift = Math.abs(videoBase.currentTime - videoOverlay.currentTime);
-    if (drift > 0.033) videoOverlay.currentTime = videoBase.currentTime;
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, fw, fh);
-    ctx.drawImage(videoBase, 0, 0, fw1, fh);
-    ctx.drawImage(videoOverlay, fw1, 0, fw2, fh);
-    drawLabelBar();
-    requestAnimationFrame(drawFrame);
-  };
+  const anySolo = soloed1 || soloed2;
+  const v1Vol = (!muted1 && (!anySolo || soloed1)) ? parseFloat(volTrack1.value) : 0;
+  const v2Vol = (!muted2 && (!anySolo || soloed2)) ? parseFloat(volTrack2.value) : 0;
+  const mVol = dbToLinear(parseFloat(masterFader.value));
 
-  recorder.start();
-  setTimeout(() => {
-    playVideos();
-    drawFrame();
-  }, 200);
+  const formData = new FormData();
+  formData.append('video1', uploadedFileBase);
+  formData.append('video2', uploadedFileOverlay);
+  formData.append('qualityHeight', qualityHeight);
+  formData.append('vol1', v1Vol);
+  formData.append('vol2', v2Vol);
+  formData.append('masterVol', mVol);
+  formData.append('showLabels', showLabels);
+  formData.append('label1', label1);
+  formData.append('label2', label2);
+  formData.append('isLinux', navigator.platform.includes('Linux'));
+  formData.append('totalDuration', duration);
+
+  try {
+    const response = await fetch('http://localhost:3000/api/render', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (!response.ok) throw new Error('Render failed on server');
+    
+    const { jobId } = await response.json();
+    
+    const poll = setInterval(async () => {
+      const res = await fetch(`http://localhost:3000/api/status/${jobId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      
+      if (data.status === 'rendering') {
+        const pct = Math.min(100, (data.progress / duration) * 100);
+        renderStatus.textContent = `Rendering on server: ${Math.floor(pct)}%`;
+        renderProgress.style.width = `${pct}%`;
+      } else if (data.status === 'done') {
+        clearInterval(poll);
+        renderStatus.textContent = 'Downloading...';
+        renderProgress.style.width = '100%';
+        const a = document.createElement('a');
+        a.href = data.url;
+        a.download = `render.mp4`;
+        a.click();
+        renderModal.classList.remove('active');
+      } else if (data.status === 'error') {
+        clearInterval(poll);
+        renderStatus.textContent = 'Error during render!';
+      }
+    }, 1000);
+  } catch (e) {
+    renderStatus.textContent = e.message;
+  }
 };
