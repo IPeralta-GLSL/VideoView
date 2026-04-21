@@ -62,8 +62,9 @@ app.post('/api/render', upload.fields([{ name: 'video1', maxCount: 1 }, { name: 
   filter += `[0:a]volume=${v1Vol}[a0];[1:a]volume=${v2Vol}[a1];[a0][a1]amix=inputs=2:duration=longest[amixed];[amixed]volume=${mVol}[a_final]`;
 
   let args = [];
+  const hasVaapi = isLinuxServer && fs.existsSync('/dev/dri/renderD128');
   
-  if (isLinuxServer) {
+  if (hasVaapi) {
     filter += `;[v_final]format=nv12,hwupload[v_hw]`;
     args = [
       '-y',
@@ -74,6 +75,20 @@ app.post('/api/render', upload.fields([{ name: 'video1', maxCount: 1 }, { name: 
       '-map', '[v_hw]',
       '-map', '[a_final]',
       '-c:v', 'h264_vaapi',
+      '-b:v', '16M',
+      '-c:a', 'aac',
+      outPath
+    ];
+  } else if (isLinuxServer) {
+    args = [
+      '-y',
+      '-i', v1Path,
+      '-i', v2Path,
+      '-filter_complex', filter,
+      '-map', '[v_final]',
+      '-map', '[a_final]',
+      '-c:v', 'libx264',
+      '-preset', 'fast',
       '-b:v', '16M',
       '-c:a', 'aac',
       outPath
