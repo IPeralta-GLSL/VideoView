@@ -1,6 +1,10 @@
+import { startLocalRender } from './localRenderer.js';
+
 let uploadedFileBase = null;
 let uploadedFileOverlay = null;
 let globalDetectedCodec = 'avc1.42E01E';
+let buffer1 = null;
+let buffer2 = null;
 
 const slider = document.getElementById('comparison-slider');
 const overlayContainer = document.getElementById('video-overlay-container');
@@ -1012,64 +1016,57 @@ const startRender = async () => {
   const label1 = track1Name.textContent.trim();
   const label2 = track2Name.textContent.trim();
 
-  renderModal.classList.add('active');
-  renderStatus.textContent = 'Uploading videos...';
-  renderProgress.style.width = '0%';
+  const rangeVal = renderRangeSelect.value;
+  let startTime = 0;
+  let endTime = duration;
 
-  const anySolo = soloed1 || soloed2;
-  const v1Vol = (!muted1 && (!anySolo || soloed1)) ? parseFloat(volTrack1.value) : 0;
-  const v2Vol = (!muted2 && (!anySolo || soloed2)) ? parseFloat(volTrack2.value) : 0;
-  const mVol = dbToLinear(parseFloat(masterFader.value));
-
-  const formData = new FormData();
-  formData.append('video1', uploadedFileBase);
-  formData.append('video2', uploadedFileOverlay);
-  formData.append('qualityHeight', qualityHeight);
-  formData.append('vol1', v1Vol);
-  formData.append('vol2', v2Vol);
-  formData.append('masterVol', mVol);
-  formData.append('showLabels', showLabels);
-  formData.append('label1', label1);
-  formData.append('label2', label2);
-  formData.append('isLinux', navigator.platform.includes('Linux'));
-  formData.append('totalDuration', duration);
-
-  const serverUrl = `http://${window.location.hostname}:3000`;
-
-  try {
-    const response = await fetch(`${serverUrl}/api/render`, {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!response.ok) throw new Error('Render failed on server');
-
-    const { jobId } = await response.json();
-
-    const poll = setInterval(async () => {
-      const res = await fetch(`${serverUrl}/api/status/${jobId}`);
-      if (!res.ok) return;
-      const data = await res.json();
-
-      if (data.status === 'rendering') {
-        const pct = Math.min(100, (data.progress / duration) * 100);
-        renderStatus.textContent = `Rendering on server: ${Math.floor(pct)}%`;
-        renderProgress.style.width = `${pct}%`;
-      } else if (data.status === 'done') {
-        clearInterval(poll);
-        renderStatus.textContent = 'Downloading...';
-        renderProgress.style.width = '100%';
-        const a = document.createElement('a');
-        a.href = `${serverUrl}${data.url}`;
-        a.download = `render.mp4`;
-        a.click();
-        renderModal.classList.remove('active');
-      } else if (data.status === 'error') {
-        clearInterval(poll);
-        renderStatus.textContent = 'Error during render!';
-      }
-    }, 1000);
-  } catch (e) {
-    renderStatus.textContent = e.message;
+  if (rangeVal === 'inout') {
+    startTime = inPoint ?? 0;
+    endTime = outPoint ?? duration;
+  } else if (rangeVal === 'custom') {
+    startTime = parseInt(renderFrameFrom.value) / 24;
+    endTime = parseInt(renderFrameTo.value) / 24;
   }
+
+  renderModal.classList.add('active');
+  renderProgress.style.width = '0%';
+  renderStatus.textContent = 'Fase 1: Codificando video (GPU)...';
+
+  startLocalRender({
+    videoBase,
+    videoOverlay,
+    audioSourceFile: uploadedFileBase,
+    startTime,
+    endTime,
+    qualityHeight,
+    label1,
+    label2,
+    showLabels,
+    onProgress: ({ phase, current, total, label }) => {
+      if (phase === 'video') {
+        const pct = Math.round((current / total) * 90);
+        renderProgress.style.width = `${pct}%`;
+        renderStatus.textContent = `Fase 1: Codificando video — Frame ${current}/${total} (${pct}%)`;
+      } else if (phase === 'audio') {
+        renderProgress.style.width = '92%';
+        renderStatus.textContent = `Fase 2: ${label}`;
+      }
+    },
+    onDone: (url) => {
+      renderProgress.style.width = '100%';
+      renderStatus.textContent = 'Descargando...';
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'render.mp4';
+      a.click();
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+        renderModal.classList.remove('active');
+      }, 2000);
+    },
+    onError: (err) => {
+      renderStatus.textContent = `Error: ${err.message}`;
+      renderProgress.style.width = '0%';
+    },
+  });
 };
