@@ -807,8 +807,7 @@ const drawStaticWaveform = async (url, canvas, trackIndex) => {
       ctx.fillStyle = `hsl(${hue}, 100%, 55%)`;
       ctx.fillRect(i, (1 + min) * amp, 1, Math.max(1, (max - min) * amp));
     }
-  } catch (error) {
-    console.error('Waveform Error for track', trackIndex, ':', error);
+  } catch {
     ctx.fillStyle = '#262626';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#555';
@@ -843,10 +842,7 @@ dropRight.addEventListener('dragenter', () => dropRight.classList.add('drag-over
 dropRight.addEventListener('dragleave', () => dropRight.classList.remove('drag-over'));
 dropRight.addEventListener('drop', (e) => handleDrop(e, videoBase, canvasWave1, track1Name, true));
 
-window.addEventListener('load', () => {
-  drawStaticWaveform(videoBase.querySelector('source').src, canvasWave1);
-  drawStaticWaveform(videoOverlay.querySelector('source').src, canvasWave2);
-});
+
 
 const btnToggleView = document.getElementById('btn-toggle-view');
 let viewMode = 'slider';

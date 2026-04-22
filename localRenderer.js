@@ -211,7 +211,11 @@ export async function startLocalRender({ videoBase, videoOverlay, audioSourceFil
 
     let finalBuffer;
     if (audioSourceFile) {
-      finalBuffer = await muxAudioPhase({ silentBuffer, audioSourceFile, onProgress });
+      try {
+        finalBuffer = await muxAudioPhase({ silentBuffer, audioSourceFile, onProgress });
+      } catch {
+        finalBuffer = silentBuffer;
+      }
     } else {
       finalBuffer = silentBuffer;
     }
