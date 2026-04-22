@@ -1031,22 +1031,16 @@ const startRender = async () => {
   startLocalRender({
     videoBase,
     videoOverlay,
-    audioSourceFile: uploadedFileBase,
     startTime,
     endTime,
     qualityHeight,
     label1,
     label2,
     showLabels,
-    onProgress: ({ phase, current, total, label }) => {
-      if (phase === 'video') {
-        const pct = Math.round((current / total) * 90);
-        renderProgress.style.width = `${pct}%`;
-        renderStatus.textContent = `Fase 1: Codificando video — Frame ${current}/${total} (${pct}%)`;
-      } else if (phase === 'audio') {
-        renderProgress.style.width = '92%';
-        renderStatus.textContent = `Fase 2: ${label}`;
-      }
+    onProgress: ({ current, total }) => {
+      const pct = Math.round((current / total) * 100);
+      renderProgress.style.width = `${pct}%`;
+      renderStatus.textContent = `Codificando — Frame ${current}/${total} (${pct}%)`;
     },
     onDone: (url) => {
       renderProgress.style.width = '100%';

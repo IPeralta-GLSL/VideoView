@@ -1,6 +1,4 @@
 import { Muxer, ArrayBufferTarget } from 'mp4-muxer';
-import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile, toBlobURL } from '@ffmpeg/util';
 
 const FPS = 24;
 const FRAME_DURATION_US = Math.round(1_000_000 / FPS);
@@ -98,7 +96,6 @@ async function encodeVideoPhase({ videoBase, videoOverlay, startTime, endTime, o
     return new Promise((resolve, reject) => {
       let frameIndex = 0;
       let done = false;
-      let lastGoodCanvas = false;
 
       const stop = () => {
         done = true;
@@ -117,18 +114,16 @@ async function encodeVideoPhase({ videoBase, videoOverlay, startTime, endTime, o
         if (encoderError) { stop(); reject(encoderError); return; }
 
         const mediaTime = metadata.mediaTime;
-        if (mediaTime >= endTime || frameIndex >= totalFrames) {
-          stop(); finish(); return;
-        }
+        if (mediaTime >= endTime || frameIndex >= totalFrames) { stop(); finish(); return; }
 
         const expectedFrameIndex = Math.min(
           Math.round((mediaTime - startTime) * FPS),
           totalFrames - 1
         );
 
-        if (lastGoodCanvas && expectedFrameIndex > frameIndex) {
-          const gapFrames = Math.min(expectedFrameIndex - frameIndex, 8);
-          for (let g = 0; g < gapFrames && frameIndex < totalFrames; g++) {
+        if (frameIndex < expectedFrameIndex) {
+          const gap = Math.min(expectedFrameIndex - frameIndex, 8);
+          for (let g = 0; g < gap && frameIndex < totalFrames; g++) {
             encodeFrame(encoder, canvas, frameIndex, false);
             frameIndex++;
             onProgress({ phase: 'video', current: frameIndex, total: totalFrames });
@@ -141,7 +136,6 @@ async function encodeVideoPhase({ videoBase, videoOverlay, startTime, endTime, o
         if (Math.abs(drift) > 2 / FPS) videoOverlay.currentTime = mediaTime;
 
         composite(ctx, videoBase, videoOverlay, label1, label2, showLabels, outW, outH);
-        lastGoodCanvas = true;
 
         encodeFrame(encoder, canvas, frameIndex, frameIndex % (FPS * 2) === 0);
         if (encoderError) { stop(); reject(encoderError); return; }
@@ -177,28 +171,7 @@ async function encodeVideoPhase({ videoBase, videoOverlay, startTime, endTime, o
   return muxer.target.buffer;
 }
 
-async function muxAudioPhase({ silentBuffer, audioSourceFile, onProgress }) {
-  onProgress({ phase: 'audio', label: 'Cargando ffmpeg.wasm...' });
-  const ffmpeg = new FFmpeg();
-  const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
-  await ffmpeg.load({
-    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-  });
-  onProgress({ phase: 'audio', label: 'Muxeando audio...' });
-  await ffmpeg.writeFile('silent.mp4', new Uint8Array(silentBuffer));
-  await ffmpeg.writeFile('source.mp4', await fetchFile(audioSourceFile));
-  await ffmpeg.exec([
-    '-i', 'silent.mp4', '-i', 'source.mp4',
-    '-c:v', 'copy', '-c:a', 'copy',
-    '-map', '0:v:0', '-map', '1:a:0',
-    '-shortest', 'output.mp4',
-  ]);
-  const data = await ffmpeg.readFile('output.mp4');
-  return data.buffer;
-}
-
-export async function startLocalRender({ videoBase, videoOverlay, audioSourceFile, startTime, endTime, qualityHeight, label1, label2, showLabels, onProgress, onDone, onError }) {
+export async function startLocalRender({ videoBase, videoOverlay, startTime, endTime, qualityHeight, label1, label2, showLabels, onProgress, onDone, onError }) {
   try {
     const aspect = videoBase.videoWidth / videoBase.videoHeight || 16 / 9;
     const outH = qualityHeight;
@@ -207,20 +180,9 @@ export async function startLocalRender({ videoBase, videoOverlay, audioSourceFil
 
     videoBase.pause(); videoOverlay.pause();
 
-    const silentBuffer = await encodeVideoPhase({ videoBase, videoOverlay, startTime, endTime, outW, outH, label1, label2, showLabels, onProgress });
+    const buffer = await encodeVideoPhase({ videoBase, videoOverlay, startTime, endTime, outW, outH, label1, label2, showLabels, onProgress });
 
-    let finalBuffer;
-    if (audioSourceFile) {
-      try {
-        finalBuffer = await muxAudioPhase({ silentBuffer, audioSourceFile, onProgress });
-      } catch {
-        finalBuffer = silentBuffer;
-      }
-    } else {
-      finalBuffer = silentBuffer;
-    }
-
-    onDone(URL.createObjectURL(new Blob([finalBuffer], { type: 'video/mp4' })));
+    onDone(URL.createObjectURL(new Blob([buffer], { type: 'video/mp4' })));
   } catch (err) {
     onError(err);
   }
